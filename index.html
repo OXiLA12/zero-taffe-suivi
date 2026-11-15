@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="ZT Suivi" />
+<title>Zéro Taffe — Tableau de bord</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f2; --surface: #fcfcfb; --border: #e3e1db;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #8a8882;
+    --s1: #2a78d6; --s2: #eb6834; --grid: #ebe9e4;
+    --good: #0f7a3d; --bad: #c43a3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121211; --surface: #1a1a19; --border: #2e2d2b;
+      --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8d86;
+      --s1: #3987e5; --s2: #d95926; --grid: #2a2927;
+      --good: #4cc27c; --bad: #ef7b7b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0; }
+  h2 { font-size: 17px; margin: 32px 0 12px; }
+  .sub { color: var(--text-2); font-size: 13px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .k-label { font-size: 13px; color: var(--text-2); }
+  .k-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .k-help { font-size: 12px; color: var(--muted); }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .hero { grid-column: span 2; }
+  @media (max-width: 480px) { .hero { grid-column: span 1; } }
+  .note { background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; color: var(--text-2); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-2); font-weight: 600; font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  input, button { font: inherit; }
+  input { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  button { background: var(--text); color: var(--surface); border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chart { position: relative; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .tip { position: absolute; pointer-events: none; background: var(--text); color: var(--surface); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .1s; }
+  details summary { cursor: pointer; color: var(--text-2); font-size: 13px; margin-top: 8px; }
+  #login { max-width: 520px; margin: 80px auto; }
+  nav.tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; gap: 4px; overflow-x: auto; margin: 18px -16px 0; padding: 8px 16px; border-bottom: 1px solid var(--border); scrollbar-width: none; }
+  nav.tabs::-webkit-scrollbar { display: none; }
+  nav.tabs button { background: transparent; color: var(--text-2); border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; white-space: nowrap; font-weight: 600; font-size: 14px; }
+  nav.tabs button[aria-selected="true"] { background: var(--text); color: var(--surface); }
+  nav.tabs button:hover:not([aria-selected="true"]) { border-color: var(--border); }
+  .tab[hidden] { display: none; }
+  .tab > h2:first-child { margin-top: 20px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .seg button { background: transparent; color: var(--text-2); border-radius: 0; padding: 6px 12px; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+  .fn { display: grid; grid-template-columns: minmax(120px, 230px) 1fr 62px 70px; gap: 6px 10px; align-items: center; font-size: 13px; }
+  .fn .lab { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fn .bar { height: 14px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+  .fn .bar i { display: block; height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; }
+  .fn .worst .bar i { background: var(--s2); }
+  .fn .pct, .fn .drop { text-align: right; font-variant-numeric: tabular-nums; }
+  .fn .drop { color: var(--muted); }
+  .fn .worst .drop { color: var(--bad); font-weight: 700; }
+  .fn .head { color: var(--text-2); font-size: 12px; font-weight: 600; }
+  @media (max-width: 560px) { .fn { grid-template-columns: minmax(90px, 1fr) 1fr 48px 56px; } }
+  .err { color: var(--bad); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <section id="login" class="card" hidden>
+    <h1>Tableau de bord Zéro Taffe</h1>
+    <p class="sub">Colle la clé admin (fichier <code>admin/.admin-key</code>). Elle reste dans ce navigateur uniquement.</p>
+    <div class="row" style="margin-top:12px">
+      <input id="keyInput" type="password" placeholder="Clé admin" style="flex:1" autocomplete="off" />
+      <button id="keyBtn">Ouvrir</button>
+    </div>
+    <p id="loginErr" class="err"></p>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <div>
+        <h1>Zéro Taffe — Tableau de bord</h1>
+        <div class="sub" id="updated"></div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="refresh">Actualiser</button>
+        <button class="ghost" id="logout">Changer de clé</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="overview">Vue d’ensemble</button>
+      <button role="tab" data-tab="funnel">Entonnoir</button>
+      <button role="tab" data-tab="ads">Pubs</button>
+      <button role="tab" data-tab="money">Revenus</button>
+      <button role="tab" data-tab="users">Utilisateurs et e-mails</button>
+      <button role="tab" data-tab="coach">Coach IA</button>
+      <button role="tab" data-tab="expenses">Dépenses</button>
+    </nav>
+
+    <section class="tab" id="tab-overview">
+      <h2>Ce mois-ci</h2>
+      <div class="grid" id="month"></div>
+      <h2>Les chiffres qui comptent (30 derniers jours)</h2>
+      <div class="grid" id="keyStats"></div>
+    </section>
+
+    <section class="tab" id="tab-funnel">
+      <h2>Du premier écran à l’abonnement</h2>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <p class="sub" style="margin:0">Personnes qui ont <b>commencé le quiz</b> sur la période, et jusqu’où elles sont allées. Aucune réponse n’est enregistrée, seulement l’écran atteint.</p>
+        <div class="seg" id="fnPeriod"><button data-d="d7">7 jours</button><button data-d="d30">30 jours</button><button data-d="d90">90 jours</button></div>
+      </div>
+      <div class="grid" id="fnTiles"></div>
+      <h2>Le paywall</h2>
+      <div class="grid" id="fnPaywall"></div>
+      <div class="card" style="margin-top:12px"><table id="tbOffers"></table></div>
+      <h2>Question par question</h2>
+      <div class="card">
+        <p class="sub" style="margin-top:0">Barre = part des personnes encore là à cet écran. « Perte » = part perdue depuis l’écran précédent. En orange : l’écran où l’on perd le plus de monde.</p>
+        <div class="fn" id="fnSteps"></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-ads">
+      <h2>Pubs et acquisition (ce mois-ci)</h2>
+      <div class="grid" id="acq"></div>
+    </section>
+
+    <section class="tab" id="tab-money">
+      <h2>Revenus et dépenses, mois par mois</h2>
+      <div class="card">
+        <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Ce qui te revient (après Apple et taxes)</span><span><i class="sw" style="background:var(--s2)"></i>Dépenses (IA + saisies)</span></div>
+        <div class="chart" id="chMoney"></div>
+        <details><summary>Voir le tableau</summary><table id="tbMoney"></table></details>
+      </div>
+      <h2>Abonnés</h2>
+      <div class="grid" id="subs"></div>
+      <h2>Hypothèse pour la LTV</h2>
+      <div class="card">
+        <div class="row">
+          <label for="renew" class="sub">Part des abonnés qui renouvellent la 2e année (%)</label>
+          <input id="renew" type="number" min="0" max="100" step="5" style="width:90px" />
+          <button class="ghost" id="renewSave">Enregistrer</button>
+        </div>
+        <p class="sub" style="margin-bottom:0">Par défaut 25 % : une appli d'arrêt perd ses clients quand ils réussissent. Remplace par ton vrai chiffre dès la 1re vague de renouvellements (RevenueCat).</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-users">
+      <h2>Utilisateurs</h2>
+      <div class="grid" id="users"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="k-label">Nouveaux utilisateurs par jour (30 derniers jours)</div>
+        <div class="chart" id="chUsers"></div>
+      </div>
+      <h2>E-mails</h2>
+      <div class="grid" id="emails"></div>
+    </section>
+
+    <section class="tab" id="tab-coach">
+      <h2>Coach IA</h2>
+      <div class="grid" id="coach"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="k-label">Messages au coach par jour (30 derniers jours)</div>
+        <div class="chart" id="chCoach"></div>
+      </div>
+      <h2>Anti-spam</h2>
+      <div class="grid" id="spam"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="k-label">Les plus gros utilisateurs du coach (24 h)</div>
+        <table id="tbTop"></table>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-expenses">
+      <h2>Tes dépenses saisies à la main</h2>
+      <div class="card">
+        <p class="sub" style="margin-top:0">Pubs Meta, influenceurs, compte Apple Developer, Supabase, domaine… Le coût de l’IA et les pubs TikTok (une fois reliées) sont calculés tout seuls.</p>
+        <div class="row">
+          <input id="exMonth" type="month" />
+          <input id="exLabel" placeholder="Ex. Influenceur @prenom" maxlength="80" style="flex:1;min-width:160px" />
+          <input id="exAmount" type="number" min="0" step="0.01" placeholder="Montant €" style="width:130px" />
+          <button id="exAdd">Ajouter</button>
+        </div>
+        <p id="exErr" class="err"></p>
+        <table id="tbEx"></table>
+      </div>
+    </section>
+
+    <div class="note" id="notes" style="margin-top:24px"></div>
+  </div>
+</main>
+
+<script>
+const URL_STATS = 'https://eigawgcqkvgmptcysktb.supabase.co/functions/v1/admin-stats';
+const store = {
+  get: () => { try { return localStorage.getItem('zt-admin-key') || ''; } catch { return ''; } },
+  set: (v) => { try { localStorage.setItem('zt-admin-key', v); } catch {} },
+  del: () => { try { localStorage.removeItem('zt-admin-key'); } catch {} },
+};
+let KEY = store.get();
+const $ = (id) => document.getElementById(id);
+// Réglages du tableau de bord (gardés dans ce navigateur)
+const cfg = {
+  get: (k, def) => { try { const v = localStorage.getItem('zt-cfg-' + k); return v == null ? def : v; } catch { return def; } },
+  set: (k, v) => { try { localStorage.setItem('zt-cfg-' + k, v); } catch {} },
+};
+const eur = (n, d = 0) => (n == null || isNaN(n) ? '—' : Number(n).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: d, minimumFractionDigits: d }));
+const int = (n) => (n == null ? '—' : Number(n).toLocaleString('fr-FR'));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const monthLabel = (ym) => MONTHS[Number(ym.slice(5, 7)) - 1] + ' ' + ym.slice(2, 4);
+
+function tile(label, value, help, cls = '', extra = '') {
+  return `<div class="card ${extra}"><div class="k-label">${esc(label)}</div><div class="k-val ${cls}">${value}</div><div class="k-help">${esc(help)}</div></div>`;
+}
+
+async function api(method = 'GET', body, query = '') {
+  const res = await fetch(URL_STATS + query, {
+    method, headers: { 'x-admin-key': KEY, ...(body ? { 'content-type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 401) throw new Error('unauthorized');
+  if (!res.ok) throw new Error('Erreur ' + res.status);
+  return res.json();
+}
+
+// ---------- Graphiques (SVG, une seule échelle, survol avec infobulle) ----------
+function barChart(el, labels, series, fmt) {
+  const W = 760, H = 240, L = 56, R = 8, T = 10, B = 28;
+  const max = Math.max(1, ...series.flatMap((s) => s.values)) * 1.1;
+  const n = labels.length, band = (W - L - R) / n, gap = 2;
+  const bw = Math.min(28, (band * 0.7 - gap * (series.length - 1)) / series.length);
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i, yy = y(v);
+    svg += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)" />`;
+    svg += `<text x="${L - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`;
+  }
+  labels.forEach((lab, i) => {
+    const cx = L + band * i + band / 2, total = series.length * bw + gap * (series.length - 1);
+    series.forEach((s, j) => {
+      const v = s.values[i], x = cx - total / 2 + j * (bw + gap), yy = y(v), h = Math.max(0, H - B - yy);
+      if (h > 0) svg += `<path d="M${x},${H - B} V${yy + Math.min(4, h)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 V${H - B} Z" fill="${s.color}" />`;
+    });
+    svg += `<rect x="${L + band * i}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent" data-i="${i}" />`;
+    if (n <= 12 || i % Math.ceil(n / 10) === 0) svg += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(lab)}</text>`;
+  });
+  svg += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--border)" /></svg><div class="tip"></div>`;
+  el.innerHTML = svg;
+  hover(el, (i) => `<b>${esc(labels[i])}</b>` + series.map((s) => `<br>${esc(s.name)} : ${fmt(s.values[i], true)}`).join(''));
+}
+
+function lineChart(el, labels, values, name, fmt) {
+  const W = 760, H = 200, L = 40, R = 8, T = 10, B = 28;
+  const max = Math.max(1, ...values) * 1.15, n = labels.length;
+  const x = (i) => L + ((W - L - R) * i) / Math.max(1, n - 1), y = (v) => T + (H - T - B) * (1 - v / max);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let i = 0; i <= 3; i++) { const v = (max / 3) * i; svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" /><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`; }
+  svg += `<path d="${values.map((v, i) => (i ? 'L' : 'M') + x(i) + ',' + y(v)).join(' ')}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" />`;
+  svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="3 3" opacity="0" /><circle class="dot" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2" opacity="0" />`;
+  labels.forEach((lab, i) => {
+    svg += `<rect x="${x(i) - (W - L - R) / n / 2}" y="${T}" width="${(W - L - R) / n}" height="${H - T - B}" fill="transparent" data-i="${i}" />`;
+    if (i % 5 === 0 || i === n - 1) svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(lab)}</text>`;
+  });
+  svg += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--border)" /></svg><div class="tip"></div>`;
+  el.innerHTML = svg;
+  const cross = el.querySelector('.cross'), dot = el.querySelector('.dot');
+  hover(el, (i) => { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1); dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(values[i])); dot.setAttribute('opacity', 1); return `<b>${esc(labels[i])}</b><br>${esc(name)} : ${fmt(values[i], true)}`; },
+    () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); });
+}
+
+function hover(el, html, out) {
+  const tip = el.querySelector('.tip');
+  el.querySelectorAll('rect[data-i]').forEach((r) => {
+    r.addEventListener('mousemove', (e) => {
+      tip.innerHTML = html(Number(r.dataset.i));
+      const box = el.getBoundingClientRect();
+      tip.style.left = Math.min(e.clientX - box.left + 12, box.width - tip.offsetWidth - 4) + 'px';
+      tip.style.top = (e.clientY - box.top - 40) + 'px';
+      tip.style.opacity = 1;
+    });
+    r.addEventListener('mouseleave', () => { tip.style.opacity = 0; out && out(); });
+  });
+}
+
+const lastDays = (n) => Array.from({ length: n }, (_, k) => { const d = new Date(Date.now() - (n - 1 - k) * 86400000); return d.toISOString().slice(0, 10); });
+
+
+// Noms lisibles des écrans du quiz (identifiants de src/quiz/steps.ts)
+const STEP_LABELS = {
+  intro: 'Accueil', method: 'Explication de la méthode', name: 'Prénom', t1: 'Transition 1', product: 'Produit utilisé', age: 'Âge', gender: 'Genre',
+  duration: 'Depuis combien de temps', puffSize: 'Taille de la puff', bottleSize: 'Taille du flacon', cigs: 'Cigarettes par jour', quantity: 'Quantité', spend: 'Dépense',
+  nicotine: 'Taux de nicotine', money: 'Révélation : l’argent', t2: 'Transition 2', firstPuff: 'Première taffe du matin', night: 'La nuit', battery: 'Batterie vide',
+  situations: 'Situations d’envie', sos: 'Présentation du SOS', bothers: 'Ce qui dérange', tried: 'Déjà essayé', cravedBy: 'Ce qui a fait craquer', t3: 'Transition 3',
+  fears: 'Peurs', fear: 'Réponse aux peurs', t4: 'Transition 4', reasons: 'Raisons d’arrêter', reward: 'Récompense', quitMethod: 'Méthode d’arrêt', timeline: 'Délai',
+  partner: 'Avec quelqu’un ?', duo: 'Défi à deux', motivation: 'Motivation /10', notifications: 'Notifications', account: 'E-mail (sauvegarde du plan)',
+  loading: 'Préparation du plan', plan: 'Ton plan', commit: 'Engagement', celebrate: 'Célébration', benefits: 'Bénéfices', trophy: 'Trophée', paywall: 'Paywall',
+};
+const OFFERS = { annual: 'Annuel', monthly: 'Mensuel', lifetime: 'À vie', rescue: 'Rattrapage (annuel réduit)' };
+const pct = (a, b) => (b ? (100 * a / b).toFixed(b >= 100 ? 0 : 1).replace('.', ',') + ' %' : '—');
+let lastData = null;
+let fnPeriod = cfg.get('fnPeriod', 'd30');
+
+function renderFunnel(d) {
+  const all = d.funnel;
+  if (!all) { $('fnTiles').innerHTML = '<div class="note">L’entonnoir n’est pas encore disponible : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'; $('fnPaywall').innerHTML = ''; $('fnSteps').innerHTML = ''; $('tbOffers').innerHTML = ''; return; }
+  const f = all[fnPeriod];
+  document.querySelectorAll('#fnPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.d === fnPeriod)));
+  const st = f.started;
+  const finished = (f.steps.find((x) => x.step === 'paywall') || {}).people || f.paywall;
+  $('fnTiles').innerHTML =
+    tile('Ont commencé le quiz', int(st), 'Personnes arrivées sur le premier écran.', '', 'hero') +
+    tile('Arrivés au paywall', int(f.paywall), pct(f.paywall, st) + ' de ceux qui ont commencé.') +
+    tile('Abonnés ou essais', int(f.purchases), pct(f.purchases, st) + ' de ceux qui ont commencé.', f.purchases ? 'pos' : '') +
+    tile('E-mails récoltés', int(f.emails), pct(f.emails, st) + ' de ceux qui ont commencé.');
+  $('fnPaywall').innerHTML =
+    tile('Taux de conversion du paywall', pct(f.purchases, f.paywall), `${int(f.purchases)} sur ${int(f.paywall)} personnes. Repère : 5 à 15 % pour une appli avec essai.`, f.paywall && f.purchases / f.paywall >= 0.05 ? 'pos' : '', 'hero') +
+    tile('Partis sans rien prendre', int(f.paywall_left), pct(f.paywall_left, f.paywall) + ' des personnes au paywall. Ce sont elles qu’on relance par e-mail.', f.paywall_left ? 'neg' : '') +
+    tile('Ont vu l’offre de rattrapage', int(f.rescue), pct(f.rescue, f.paywall) + ' des personnes au paywall (après « Plus tard »).') +
+    tile('Ont appuyé sur « acheter »', int(f.buy_taps), 'Dont ' + int(f.buy_taps - f.purchases) + ' ont annulé la fenêtre de paiement Apple.');
+  $('tbOffers').innerHTML = '<tr><th>Offre</th><th class="n">Appuis sur « acheter »</th><th class="n">Achats ou essais</th><th class="n">Réussite</th></tr>' +
+    Object.entries(OFFERS).map(([k, l]) => { const o = f.by_offer[k] || { taps: 0, purchases: 0 }; return `<tr><td>${l}</td><td class="n">${int(o.taps)}</td><td class="n">${int(o.purchases)}</td><td class="n">${pct(o.purchases, o.taps)}</td></tr>`; }).join('');
+  // Question par question
+  const steps = f.steps.filter((x) => x.idx < 999);
+  if (!st || !steps.length) { $('fnSteps').innerHTML = '<div class="sub" style="grid-column:1/-1">Pas encore de données sur cette période. Elles arrivent avec la version 1.0.2 de l’appli.</div>'; return; }
+  let worst = -1, worstDrop = 0;
+  steps.forEach((x, i) => { if (i === 0) return; const drop = (steps[i - 1].people - x.people) / Math.max(1, steps[i - 1].people); if (drop > worstDrop) { worstDrop = drop; worst = i; } });
+  $('fnSteps').innerHTML = '<div class="head">Écran</div><div class="head">Encore là</div><div class="head" style="text-align:right">%</div><div class="head" style="text-align:right">Perte</div>' +
+    steps.map((x, i) => {
+      const share = x.people / st, drop = i ? (steps[i - 1].people - x.people) / Math.max(1, steps[i - 1].people) : 0;
+      const cls = i === worst && worstDrop > 0 ? ' class="worst"' : '';
+      const label = STEP_LABELS[x.step] || x.step;
+      return `<div${cls} style="display:contents"><div class="lab" title="${esc(label)} · ${int(x.people)} personnes">${i + 1}. ${esc(label)}</div><div class="bar"><i style="width:${Math.max(0.5, share * 100)}%"></i></div><div class="pct">${pct(x.people, st)}</div><div class="drop">${i ? '−' + (drop * 100).toFixed(0) + ' %' : ''}</div></div>`;
+    }).join('');
+}
+
+function showTab(name) {
+  const tabs = [...document.querySelectorAll('#tabs button')];
+  if (!tabs.some((b) => b.dataset.tab === name)) name = 'overview';
+  tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  document.querySelectorAll('section.tab').forEach((t) => (t.hidden = t.id !== 'tab-' + name));
+  cfg.set('tab', name);
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+}
+
+// ---------- Rendu ----------
+function render(d) {
+  $('updated').innerHTML = 'Mis à jour le ' + esc(new Date(d.generated_at).toLocaleString('fr-FR')) + '<span id="ago"></span> · actualisation automatique chaque minute';
+  const rc = d.revenuecat || {};
+  const m = rc.metrics || {};
+  const curMonth = new Date().toISOString().slice(0, 7);
+
+  // Mois : RevenueCat (6 mois) + coût IA + dépenses saisies
+  const monthsList = rc.months ? rc.months.map((x) => x.month) : lastMonths(6);
+  // TikTok Ads : dépenses lues automatiquement. Si c'est branché, les saisies « TikTok » ne sont plus comptées (pas de double).
+  const tt = d.tiktok || {};
+  const ttAuto = tt.configured && !tt.error;
+  const ttBy = ttAuto ? tt.spend_by_month || {} : {};
+  const isTikTokLabel = (l) => /tiktok/i.test(l);
+  const manualBy = {};
+  for (const e of d.expenses) {
+    if (ttAuto && isTikTokLabel(e.label)) continue;
+    const k = e.month.slice(0, 7); manualBy[k] = (manualBy[k] || 0) + Number(e.amount_eur);
+  }
+  const rows = monthsList.map((k) => {
+    const r = (rc.months || []).find((x) => x.month === k) || { revenue: 0, proceeds: 0 };
+    const ai = d.coach.cost_by_month_eur[k] || 0, manual = (manualBy[k] || 0) + (ttBy[k] || 0);
+    return { k, revenue: r.revenue, proceeds: r.proceeds, ai, manual, spend: ai + manual, profit: r.proceeds - ai - manual };
+  });
+  const cur = rows.find((r) => r.k === curMonth) || { revenue: 0, proceeds: 0, ai: 0, manual: 0, spend: 0, profit: 0 };
+
+  $('month').innerHTML =
+    tile('Bénéfice du mois', eur(cur.profit), 'Ce qui te revient − toutes les dépenses du mois.', cur.profit >= 0 ? 'pos' : 'neg', 'hero') +
+    tile('Chiffre d’affaires (brut)', eur(cur.revenue), 'Ce que les clients ont payé ce mois-ci.') +
+    tile('Ce qui te revient', eur(cur.proceeds), 'Après la part d’Apple (15 %) et les taxes.') +
+    tile('Dépenses du mois', eur(cur.spend), `IA ${eur(cur.ai, 2)} + saisies ${eur(cur.manual)}.`);
+
+  // Pubs et acquisition : dépenses saisies dont le libellé parle de pub (TikTok, Meta, ads…)
+  const isAd = (l) => /pub|tiktok|meta|facebook|instagram|ads?\b|influen/i.test(l);
+  const ttMonth = ttBy[curMonth] || 0;
+  const adSpend = ttMonth + d.expenses.filter((e) => e.month.slice(0, 7) === curMonth && isAd(e.label) && !(ttAuto && isTikTokLabel(e.label))).reduce((s, e) => s + Number(e.amount_eur), 0);
+  const ttDays = ttAuto ? Object.entries(tt.by_day || {}).filter(([k]) => k.slice(0, 7) === curMonth) : [];
+  const ttInstalls = ttDays.reduce((s, [, v]) => s + v.installs, 0), ttClicks = ttDays.reduce((s, [, v]) => s + v.clicks, 0), ttImpr = ttDays.reduce((s, [, v]) => s + v.impressions, 0);
+  const ttNote = !tt.configured ? 'TikTok pas encore relié : dépenses à saisir à la main.' : tt.error ? 'Erreur TikTok : ' + tt.error : 'Dont TikTok (automatique) : ' + eur(ttMonth, 2) + '.';
+  const newMonth = d.users.new_month ?? 0;
+  const subsNow = m.active_subscriptions ?? null, trialsNow = m.active_trials ?? null;
+  $('acq').innerHTML =
+    tile('Dépensé en pubs', eur(adSpend), ttNote, tt.error ? 'neg' : '') +
+    (ttAuto ? tile('TikTok : clics → installations', `${int(ttClicks)} → ${int(ttInstalls)}`, `${int(ttImpr)} affichages · taux de clic ${ttImpr ? (100 * ttClicks / ttImpr).toFixed(2) + ' %' : '—'} (repère : > 0,8 %).`, ttImpr && ttClicks / ttImpr < 0.008 ? 'neg' : '') : '') +
+    tile('Nouveaux utilisateurs', int(newMonth), 'Installations qui ont ouvert l’appli ce mois-ci.') +
+    tile('Coût par nouvel utilisateur', newMonth && adSpend ? eur(adSpend / newMonth, 2) : '—', 'Pubs ÷ nouveaux utilisateurs. Repère : sous 3 € c’est bien.', newMonth && adSpend / newMonth > 3 ? 'neg' : '') +
+    tile('Essais en cours', trialsNow == null ? '—' : int(trialsNow), rc.configured ? 'Dans leurs 3 jours gratuits.' : 'Relie RevenueCat pour voir ce chiffre.') +
+    tile('Coût par abonné', subsNow && adSpend ? eur(adSpend / subsNow, 2) : '—', 'Pubs du mois ÷ abonnés actifs (approximation).') +
+    tile('Retour sur pub', adSpend ? (cur.proceeds / adSpend).toFixed(2) + ' ×' : '—', 'Ce qui te revient ÷ pubs. Au-dessus de 1 × = rentable.', adSpend && cur.proceeds < adSpend ? 'neg' : adSpend ? 'pos' : '');
+
+  // CAC, LTV estimée et ratio
+  // Nouveaux abonnés du mois ≈ abonnés actifs aujourd'hui − abonnés actifs au 1er jour du mois enregistré
+  // (approximation : les résiliations du mois ne sont pas comptées, faibles au début avec l'annuel).
+  const snaps = d.snapshots;
+  let newSubs = null;
+  if (snaps && snaps.length && subsNow != null) {
+    const before = snaps.filter((s) => s.day < curMonth + '-01').pop();
+    const firstThisMonth = snaps.find((s) => s.day.slice(0, 7) === curMonth);
+    const base = before ? before.active_subscriptions : firstThisMonth ? firstThisMonth.active_subscriptions : 0;
+    newSubs = Math.max(0, subsNow - base);
+  }
+  const cac = adSpend && newSubs ? adSpend / newSubs : null;
+  const renew = Number(cfg.get('renew', 25)) / 100;
+  const firstPay = newSubs ? cur.proceeds / newSubs : null; // net moyen du 1er paiement (après Apple et taxes)
+  const ltv = firstPay != null ? firstPay * (1 + renew) : null;
+  const ratio = cac && ltv ? ltv / cac : null;
+  $('acq').innerHTML +=
+    tile('Nouveaux abonnés payants', newSubs == null ? '—' : int(newSubs), snaps === null ? 'Colle le script SQL « historique abonnés » dans Supabase pour activer ce calcul.' : 'Hausse des abonnés actifs depuis le début du mois (estimation).') +
+    tile('CAC (coût par abonné payant)', cac == null ? '—' : eur(cac, 2), 'Pubs du mois ÷ nouveaux abonnés payants.') +
+    tile('LTV estimée', ltv == null ? '—' : eur(ltv, 2), `1er paiement net moyen × (1 + ${Math.round(renew * 100)} % de renouvellement). Hypothèse à corriger en bas de page quand tu auras du recul.`) +
+    tile('Ratio LTV / CAC', ratio == null ? '—' : ratio.toFixed(1) + ' ×', 'Objectif : 3 × ou plus. Sous 1 ×, chaque abonné te fait perdre de l’argent.', ratio == null ? '' : ratio >= 3 ? 'pos' : ratio < 1 ? 'neg' : '', 'hero');
+
+  barChart($('chMoney'), rows.map((r) => monthLabel(r.k)), [
+    { name: 'Ce qui te revient', values: rows.map((r) => r.proceeds), color: 'var(--s1)' },
+    { name: 'Dépenses', values: rows.map((r) => r.spend), color: 'var(--s2)' },
+  ], (v, full) => eur(v, full ? 2 : 0));
+  $('tbMoney').innerHTML = '<tr><th>Mois</th><th class="n">CA brut</th><th class="n">Te revient</th><th class="n">IA</th><th class="n">Saisies</th><th class="n">Bénéfice</th></tr>' +
+    rows.map((r) => `<tr><td>${monthLabel(r.k)}</td><td class="n">${eur(r.revenue, 2)}</td><td class="n">${eur(r.proceeds, 2)}</td><td class="n">${eur(r.ai, 2)}</td><td class="n">${eur(r.manual, 2)}</td><td class="n ${r.profit >= 0 ? 'pos' : 'neg'}">${eur(r.profit, 2)}</td></tr>`).join('');
+
+  // Abonnés (RevenueCat)
+  const labelsRC = { active_subscriptions: ['Abonnés actifs', 'Personnes qui paient en ce moment.'], active_trials: ['Essais en cours', 'Dans leurs 3 jours gratuits : futurs abonnés potentiels.'], mrr: ['Revenu mensuel récurrent', 'Ce que rapportent les abonnements chaque mois (MRR).'], revenue: ['CA 28 derniers jours', 'Tout ce qui a été encaissé sur 28 jours.'], new_customers: ['Nouveaux clients (28 j)', 'Personnes vues pour la première fois par RevenueCat.'], active_users: ['Utilisateurs actifs (28 j)', 'Personnes qui ont ouvert l’appli.'] };
+  if (!rc.configured) $('subs').innerHTML = '<div class="note"><b>⚠️ RevenueCat n’est pas encore relié</b> : sans lui, pas de chiffre d’affaires, d’abonnés ni d’essais. Dans le Terminal, dans le dossier zero-taffe :<br><code>supabase secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_PROJECT_ID=…</code><br>(RevenueCat > Project settings > API keys : crée une clé secrète v2 en lecture seule ; l’ID du projet est dans l’adresse de la page.)</div>';
+  else if (rc.error) $('subs').innerHTML = `<div class="note">RevenueCat a renvoyé une erreur : ${esc(rc.error)}</div>`;
+  else {
+    const subs = m.active_subscriptions || 0;
+    $('subs').innerHTML = Object.entries(labelsRC).filter(([id]) => id in m).map(([id, [l, h]]) => tile(l, ['mrr', 'revenue'].includes(id) ? eur(m[id]) : int(m[id]), h)).join('') +
+      tile('Coût IA par abonné', subs ? eur(d.coach.cost_30d_eur / subs, 2) : '—', 'Coût du coach sur 30 jours ÷ abonnés actifs.');
+  }
+
+  // Utilisateurs
+  const u = d.users;
+  $('users').innerHTML = tile('Utilisateurs au total', int(u.total), 'Toutes les personnes qui ont ouvert l’appli.') +
+    tile('Nouveaux (7 jours)', int(u.new_7d), 'Installations récentes.') + tile('Nouveaux (30 jours)', int(u.new_30d), '') +
+    tile('Actifs (7 jours)', int(u.active_7d), 'Revenus dans l’appli cette semaine.') + tile('Défis à deux créés', int(d.duo.duos), '');
+  const days = lastDays(30);
+  lineChart($('chUsers'), days.map((x) => x.slice(8) + '/' + x.slice(5, 7)), days.map((x) => u.new_by_day[x] || 0), 'Nouveaux utilisateurs', (v) => int(Math.round(v)));
+
+  // Coach
+  const c = d.coach;
+  $('coach').innerHTML = tile('Coût IA (30 jours)', eur(c.cost_30d_eur, 2), `Estimation : ${c.prices.in} $ / ${c.prices.out} $ par million de tokens.`) +
+    tile('Messages (30 jours)', int(c.messages_30d), `${int(c.messages_24h)} ces dernières 24 h.`) +
+    tile('Coût par message', c.messages_30d ? eur(c.cost_30d_eur / c.messages_30d, 4) : '—', '') +
+    tile('Personnes qui parlent au coach', int(c.users_30d), 'Sur 30 jours.') +
+    tile('Erreurs IA (30 jours)', int(c.errors_30d), 'Réponses ratées côté OpenAI.', c.errors_30d ? 'neg' : '');
+  barChart($('chCoach'), days.map((x) => x.slice(8) + '/' + x.slice(5, 7)), [{ name: 'Messages', values: days.map((x) => c.by_day[x] || 0), color: 'var(--s1)' }], (v) => int(Math.round(v)));
+
+  // Spam
+  const s = d.spam, reasons = { slow: 'trop rapides', duplicate: 'doublons', burst: 'rafales', limit: 'limite du jour' };
+  $('spam').innerHTML = tile('Messages refusés (24 h)', int(s.rejected_24h), Object.entries(s.reasons_24h).map(([k, v]) => `${v} ${reasons[k] || k}`).join(', ') || 'Aucun.', s.rejected_24h ? 'neg' : '') +
+    tile('Personnes bloquées en ce moment', int(s.active_blocks.length), s.active_blocks.map((b) => `${b.user} : ${b.reason}`).join(' · ') || 'Personne.');
+  $('tbTop').innerHTML = s.top_users_24h.length ? '<tr><th>Utilisateur</th><th class="n">Messages</th><th class="n">Refusés</th></tr>' + s.top_users_24h.map((t) => `<tr><td>${esc(t.user)}</td><td class="n">${t.messages}</td><td class="n">${t.rejected}</td></tr>`).join('') : '<tr><td class="sub">Aucun message ces dernières 24 h.</td></tr>';
+
+  // Dépenses
+  $('tbEx').innerHTML = d.expenses.length ? '<tr><th>Mois</th><th>Dépense</th><th class="n">Montant</th><th></th></tr>' + d.expenses.map((e) => `<tr><td>${monthLabel(e.month.slice(0, 7))}</td><td>${esc(e.label)}</td><td class="n">${eur(e.amount_eur, 2)}</td><td class="n"><button class="ghost" data-del="${e.id}">Supprimer</button></td></tr>`).join('') : '<tr><td class="sub">Aucune dépense saisie.</td></tr>';
+  document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => { await api('DELETE', null, '?id=' + b.dataset.del); load(); });
+
+  // Entonnoir
+  lastData = d;
+  renderFunnel(d);
+
+  // E-mails
+  const em = d.emails;
+  $('emails').innerHTML = em == null
+    ? '<div class="note">Les e-mails ne sont pas encore disponibles : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'
+    : tile('Contacts e-mail', int(em.subscribed), `Personnes d’accord pour recevoir des e-mails. ${int(em.unsubscribed)} désinscrites.`, '', 'hero') +
+      tile('Nouveaux (7 jours)', int(em.new_7d), 'E-mails donnés cette semaine.') +
+      tile('Pas encore abonnés', int(em.without_purchase), 'Contacts à relancer par e-mail pour les faire revenir.', em.without_purchase ? 'pos' : '') +
+      tile('En anglais', int(em.english), 'Contacts dont le téléphone est en anglais.');
+
+  // Vue d'ensemble : l'essentiel sur 30 jours
+  const f30 = d.funnel ? d.funnel.d30 : null;
+  $('keyStats').innerHTML =
+    tile('Nouveaux utilisateurs', int(d.users.new_30d), 'Personnes qui ont ouvert l’appli (30 jours).') +
+    tile('Quiz → paywall', f30 ? pct(f30.paywall, f30.started) : '—', f30 ? `${int(f30.paywall)} sur ${int(f30.started)} qui ont commencé.` : 'Disponible avec la version 1.0.2.') +
+    tile('Paywall → abonnement', f30 ? pct(f30.purchases, f30.paywall) : '—', f30 ? `${int(f30.purchases)} essais ou achats.` : '') +
+    tile('Abonnés actifs', m.active_subscriptions == null ? '—' : int(m.active_subscriptions), (m.active_trials == null ? '' : int(m.active_trials) + ' en essai gratuit.')) +
+    tile('Contacts e-mail', em ? int(em.subscribed) : '—', em ? int(em.without_purchase) + ' à relancer.' : '') +
+    tile('Dépensé en pubs (mois)', eur(adSpend), ttNote);
+
+  $('notes').innerHTML = '<b>Comment lire ces chiffres</b><br>• « Ce qui te revient » = montant net envoyé par Apple, après sa commission et les taxes.<br>• Le coût de l’IA est une estimation calculée à partir des tokens réellement utilisés ; vérifie les prix sur la page tarifs d’OpenAI.<br>• Les achats faits en mode test (Test Store) n’apparaissent pas dans le chiffre d’affaires.<br>• L’entonnoir (quiz et paywall) est mesuré à partir de la version 1.0.2 de l’appli : avant, ces onglets restent vides.<br>• Les e-mails ne sont enregistrés que si la personne a coché la case de consentement.';
+}
+
+function lastMonths(n) { const now = new Date(); return Array.from({ length: n }, (_, k) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (n - 1 - k), 1)).toISOString().slice(0, 7)); }
+
+async function load() {
+  try {
+    lastLoad = Date.now();
+    const d = await api();
+    $('login').hidden = true; $('app').hidden = false;
+    render(d);
+  } catch (e) {
+    $('app').hidden = true; $('login').hidden = false;
+    $('loginErr').textContent = e.message === 'unauthorized' ? (KEY ? 'Clé incorrecte.' : '') : 'Impossible de charger : ' + e.message;
+  }
+}
+
+document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+showTab(location.hash.slice(1) || cfg.get('tab', 'overview'));
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+document.querySelectorAll('#fnPeriod button').forEach((b) => (b.onclick = () => { fnPeriod = b.dataset.d; cfg.set('fnPeriod', fnPeriod); if (lastData) renderFunnel(lastData); }));
+$('keyBtn').onclick = () => { KEY = $('keyInput').value.trim(); store.set(KEY); load(); };
+$('keyInput').onkeydown = (e) => { if (e.key === 'Enter') $('keyBtn').click(); };
+$('logout').onclick = () => { store.del(); KEY = ''; $('keyInput').value = ''; load(); };
+$('refresh').onclick = load;
+$('renew').value = cfg.get('renew', 25);
+$('renewSave').onclick = () => { const v = Math.min(100, Math.max(0, Number($('renew').value) || 0)); cfg.set('renew', v); $('renew').value = v; load(); };
+// Actualisation automatique : chaque minute, et dès que tu reviens sur l'onglet.
+let lastLoad = 0;
+const autoLoad = () => { if (KEY && document.visibilityState === 'visible') { lastLoad = Date.now(); load(); } };
+setInterval(autoLoad, 60_000);
+document.addEventListener('visibilitychange', () => { if (Date.now() - lastLoad > 15_000) autoLoad(); });
+setInterval(() => {
+  const s = Math.round((Date.now() - lastLoad) / 1000);
+  if (lastLoad && $('ago')) $('ago').textContent = s < 5 ? ' · à l’instant' : ` · il y a ${s < 60 ? s + ' s' : Math.round(s / 60) + ' min'}`;
+}, 5_000);
+$('exMonth').value = new Date().toISOString().slice(0, 7);
+$('exAdd').onclick = async () => {
+  $('exErr').textContent = '';
+  try {
+    await api('POST', { month: $('exMonth').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value) });
+    $('exLabel').value = ''; $('exAmount').value = ''; load();
+  } catch (e) { $('exErr').textContent = 'Vérifie le mois, le libellé et le montant.'; }
+};
+load();
+</script>
+</body>
+</html>
