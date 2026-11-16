@@ -77,6 +77,16 @@
   .fn .head { color: var(--text-2); font-size: 12px; font-weight: 600; }
   @media (max-width: 560px) { .fn { grid-template-columns: minmax(90px, 1fr) 1fr 48px 56px; } }
   .err { color: var(--bad); font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  .scroll table { min-width: 860px; }
+  tr.sub td { font-size: 13px; color: var(--text-2); }
+  tr.sub td:first-child { padding-left: 22px; }
+  tr.total td { font-weight: 700; border-top: 2px solid var(--border); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.good { color: var(--good); border-color: currentColor; }
+  .pill.bad { color: var(--bad); border-color: currentColor; }
+  .pill.warn { color: var(--s2); border-color: currentColor; }
+  select { font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
 </style>
 </head>
 <body>
@@ -105,6 +115,7 @@
 
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-tab="overview">Vue d’ensemble</button>
+      <button role="tab" data-tab="sources">Sources</button>
       <button role="tab" data-tab="funnel">Entonnoir</button>
       <button role="tab" data-tab="ads">Pubs</button>
       <button role="tab" data-tab="money">Revenus</button>
@@ -118,6 +129,27 @@
       <div class="grid" id="month"></div>
       <h2>Les chiffres qui comptent (30 derniers jours)</h2>
       <div class="grid" id="keyStats"></div>
+    </section>
+
+    <section class="tab" id="tab-sources">
+      <h2>D’où viennent tes clients, et ce que chaque source te rapporte</h2>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <p class="sub" style="margin:0">Personnes qui ont répondu « comment tu as connu Zéro Taffe ? » sur la période, et tout ce qu’elles ont payé depuis.</p>
+        <div class="seg" id="srcPeriod"><button data-p="cur">Ce mois-ci</button><button data-p="prev">Mois dernier</button><button data-p="3m">3 mois</button><button data-p="all">Depuis le début</button></div>
+      </div>
+      <div id="srcStatus"></div>
+      <div class="grid" id="srcTiles"></div>
+      <h2>Source par source</h2>
+      <div class="card scroll"><table id="tbSources"></table></div>
+      <p class="sub">« Rapporté » = ce qui te revient (après Apple et taxes). « Retour » = rapporté ÷ dépensé : au-dessus de 1 ×, la source est rentable. Les essais en cours peuvent encore payer : attends 4 jours après une dépense avant de juger.</p>
+      <h2>Dépensé et rapporté, par source</h2>
+      <div class="card">
+        <div class="legend"><span><i class="sw" style="background:var(--s2)"></i>Dépensé</span><span><i class="sw" style="background:var(--s1)"></i>Rapporté</span></div>
+        <div class="chart" id="chSources"></div>
+      </div>
+      <h2>Codes promo des créateurs</h2>
+      <div class="card scroll"><table id="tbCodes"></table></div>
+      <div class="note" style="margin-top:12px"><b>Comment ça marche</b><br>• La source vient de la question du quiz (version 1.0.3 de l’appli). Sur TikTok, Instagram, YouTube et Snapchat, la personne précise : pub, créateur ou compte Zéro Taffe.<br>• Les paiements arrivent tout seuls de RevenueCat, même les renouvellements des mois suivants.<br>• Dépenses : TikTok Ads est lu automatiquement. Le reste (influenceurs, ChatGPT, Apple Ads…) se saisit dans l’onglet Dépenses en choisissant sa source.<br>• Repère : un client payant te rapporte environ 28 € la 1re année. Si une source coûte plus de 28 € par payant, elle perd de l’argent.</div>
     </section>
 
     <section class="tab" id="tab-funnel">
@@ -195,6 +227,7 @@
         <div class="row">
           <input id="exMonth" type="month" />
           <input id="exLabel" placeholder="Ex. Influenceur @prenom" maxlength="80" style="flex:1;min-width:160px" />
+          <select id="exSource" aria-label="Source de la dépense"></select>
           <input id="exAmount" type="number" min="0" step="0.01" placeholder="Montant €" style="width:130px" />
           <button id="exAdd">Ajouter</button>
         </div>
@@ -306,7 +339,7 @@ const lastDays = (n) => Array.from({ length: n }, (_, k) => { const d = new Date
 
 // Noms lisibles des écrans du quiz (identifiants de src/quiz/steps.ts)
 const STEP_LABELS = {
-  intro: 'Accueil', method: 'Explication de la méthode', name: 'Prénom', t1: 'Transition 1', product: 'Produit utilisé', age: 'Âge', gender: 'Genre',
+  intro: 'Accueil', method: 'Explication de la méthode', name: 'Prénom', source: 'Comment tu nous as connus', sourceKind: 'Pub, créateur ou compte ZT', t1: 'Transition 1', product: 'Produit utilisé', age: 'Âge', gender: 'Genre',
   duration: 'Depuis combien de temps', puffSize: 'Taille de la puff', bottleSize: 'Taille du flacon', cigs: 'Cigarettes par jour', quantity: 'Quantité', spend: 'Dépense',
   nicotine: 'Taux de nicotine', money: 'Révélation : l’argent', t2: 'Transition 2', firstPuff: 'Première taffe du matin', night: 'La nuit', battery: 'Batterie vide',
   situations: 'Situations d’envie', sos: 'Présentation du SOS', bothers: 'Ce qui dérange', tried: 'Déjà essayé', cravedBy: 'Ce qui a fait craquer', t3: 'Transition 3',
@@ -350,6 +383,92 @@ function renderFunnel(d) {
       const label = STEP_LABELS[x.step] || x.step;
       return `<div${cls} style="display:contents"><div class="lab" title="${esc(label)} · ${int(x.people)} personnes">${i + 1}. ${esc(label)}</div><div class="bar"><i style="width:${Math.max(0.5, share * 100)}%"></i></div><div class="pct">${pct(x.people, st)}</div><div class="drop">${i ? '−' + (drop * 100).toFixed(0) + ' %' : ''}</div></div>`;
     }).join('');
+}
+
+// ---------- Sources : d'où viennent les clients et ce qu'ils rapportent ----------
+const SRC = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', snapchat: 'Snapchat', chatgpt: 'ChatGPT / IA', appstore: 'App Store (recherche, Apple Ads)', friend: 'Bouche-à-oreille', other: 'Autre', unknown: 'Non déclaré' };
+const KIND = { ad: 'Pub', creator: 'Créateurs', zt: 'Compte Zéro Taffe (gratuit)', unsure: 'Ne sait plus' };
+const SOCIAL_SRC = ['tiktok', 'instagram', 'youtube', 'snapchat'];
+const EXPENSE_SOURCES = [
+  ['', 'Pas une dépense pour attirer des clients'],
+  ['tiktok:creator', 'Créateur TikTok'], ['instagram:creator', 'Créateur Instagram'], ['youtube:creator', 'Créateur YouTube'], ['snapchat:creator', 'Créateur Snapchat'],
+  ['tiktok:ad', 'Pub TikTok (si pas lue automatiquement)'], ['instagram:ad', 'Pub Instagram / Meta'], ['snapchat:ad', 'Pub Snapchat'],
+  ['chatgpt:ad', 'Pub ChatGPT'], ['appstore:ad', 'Apple Ads'],
+];
+const srcLabel = (key) => { const [p, k] = String(key || '').split(':'); return (SRC[p] || p) + (k ? ' · ' + (KIND[k] || k) : ''); };
+let srcPeriod = cfg.get('srcPeriod', 'all');
+
+function periodMonths(p) {
+  const cur = new Date().toISOString().slice(0, 7);
+  if (p === 'cur') return new Set([cur]);
+  if (p === 'prev') return new Set(lastMonths(2).slice(0, 1));
+  if (p === '3m') return new Set(lastMonths(3));
+  return null; // depuis le début
+}
+
+/** Conseil pour une source : continuer, améliorer, couper… (r = ligne agrégée). */
+function verdict(r) {
+  if (r.key === 'unknown') return ['', '—'];
+  if (!r.spend) return r.payers ? ['good', 'Gratuit : à développer'] : ['', r.people ? 'Gratuit' : '—'];
+  const roas = r.net / r.spend;
+  if (roas >= 1) return ['good', 'Rentable : augmenter'];
+  if (r.people < 15 && r.spend < 50) return ['', 'Trop tôt pour juger'];
+  if (roas >= 0.5) return ['warn', 'À améliorer : changer les vidéos'];
+  if (r.spend >= 50) return ['bad', 'À couper ou revoir'];
+  return ['', 'Trop tôt pour juger'];
+}
+
+function renderSources(d) {
+  document.querySelectorAll('#srcPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === srcPeriod)));
+  const s = d.sources;
+  if (!s) { $('srcStatus').innerHTML = '<div class="note">Les sources ne sont pas encore disponibles.</div>'; ['srcTiles', 'tbSources', 'chSources', 'tbCodes'].forEach((id) => ($(id).innerHTML = '')); return; }
+  const months = periodMonths(srcPeriod);
+  const inP = (m) => !months || months.has(m);
+
+  // Agrégation par plateforme (TikTok…) et par précision (pub, créateur…).
+  const rows = {};
+  const row = (key) => (rows[key] ??= { key, people: 0, paywall: 0, trials: 0, payers: 0, net: 0, gross: 0, spend: 0 });
+  const add = (key, f) => { const [p, k] = key.split(':'); f(row(p)); if (k) f(row(p + ':' + k)); };
+  for (const c of s.cohorts.filter((c) => inP(c.month))) add(c.key, (r) => { r.people += c.people; r.paywall += c.paywall; r.trials += c.trials; r.payers += c.payers; r.net += c.net; r.gross += c.gross; });
+  for (const x of s.spend.filter((x) => inP(x.month))) add(x.key, (r) => { r.spend += x.amount; });
+
+  const platforms = Object.keys(SRC).filter((p) => rows[p]);
+  const tot = platforms.reduce((t, p) => { for (const f of ['people', 'paywall', 'trials', 'payers', 'net', 'gross', 'spend']) t[f] += rows[p][f]; return t; }, { people: 0, paywall: 0, trials: 0, payers: 0, net: 0, gross: 0, spend: 0 });
+
+  // État des branchements
+  const notes = [];
+  if (!s.cohorts.some((c) => c.key !== 'unknown')) notes.push('La question « comment tu as connu Zéro Taffe ? » arrive avec la <b>version 1.0.3</b> de l’appli : les sources se rempliront dès sa sortie.');
+  if (!s.webhook || !s.webhook.events) notes.push('Aucun paiement reçu de RevenueCat pour l’instant : le <b>webhook RevenueCat</b> doit être branché (voir avec Claude), sinon la colonne « Rapporté » reste à 0.');
+  $('srcStatus').innerHTML = notes.length ? `<div class="note" style="margin-bottom:12px">${notes.join('<br>')}</div>` : '';
+
+  const cpp = tot.payers ? tot.spend / tot.payers : null;
+  $('srcTiles').innerHTML =
+    tile('Retour sur tes dépenses', tot.spend ? (tot.net / tot.spend).toFixed(2).replace('.', ',') + ' ×' : '—', tot.spend ? `${eur(tot.net)} rapportés pour ${eur(tot.spend)} dépensés.` : 'Aucune dépense d’acquisition sur la période.', tot.spend ? (tot.net >= tot.spend ? 'pos' : 'neg') : '', 'hero') +
+    tile('Dépensé', eur(tot.spend), 'Pubs et créateurs, sur la période.') +
+    tile('Rapporté', eur(tot.net), 'Ce qui te revient, payé par ces personnes.') +
+    tile('Coût par client payant', cpp == null ? '—' : eur(cpp, 2), 'Repère : sous 28 € tu gagnes de l’argent dès la 1re année.', cpp == null ? '' : cpp <= 28 ? 'pos' : 'neg');
+
+  const line = (r, label, cls = '') => {
+    const [vc, vt] = verdict(r);
+    const pending = Math.max(0, r.trials - r.payers);
+    return `<tr class="${cls}"><td>${esc(label)}</td><td class="n">${r.spend ? eur(r.spend) : '—'}</td><td class="n">${int(r.people)}</td><td class="n">${pct(r.paywall, r.people)}</td><td class="n">${int(r.trials)}${pending ? ` <span class="sub">(${int(pending)} en cours)</span>` : ''}</td><td class="n">${int(r.payers)}</td><td class="n">${eur(r.net)}</td><td class="n">${r.spend && r.payers ? eur(r.spend / r.payers, 2) : '—'}</td><td class="n ${r.spend ? (r.net >= r.spend ? 'pos' : 'neg') : ''}">${r.spend ? (r.net / r.spend).toFixed(2).replace('.', ',') + ' ×' : '—'}</td><td>${cls === 'total' ? '' : `<span class="pill ${vc}">${esc(vt)}</span>`}</td></tr>`;
+  };
+  $('tbSources').innerHTML = platforms.length
+    ? '<tr><th>Source</th><th class="n">Dépensé</th><th class="n">Personnes</th><th class="n">Vont au paywall</th><th class="n">Essais ou achats</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Coût / payant</th><th class="n">Retour</th><th>Conseil</th></tr>' +
+      platforms.map((p) => line(rows[p], SRC[p]) + (SOCIAL_SRC.includes(p) ? Object.keys(KIND).filter((k) => rows[p + ':' + k]).map((k) => line(rows[p + ':' + k], '↳ ' + KIND[k], 'sub')).join('') : '')).join('') +
+      line(tot, 'Total', 'total')
+    : '<tr><td class="sub">Pas encore de données sur cette période.</td></tr>';
+
+  const chartP = platforms.filter((p) => rows[p].spend || rows[p].net);
+  if (chartP.length) barChart($('chSources'), chartP.map((p) => SRC[p].split(' (')[0]), [
+    { name: 'Dépensé', values: chartP.map((p) => rows[p].spend), color: 'var(--s2)' },
+    { name: 'Rapporté', values: chartP.map((p) => rows[p].net), color: 'var(--s1)' },
+  ], (v, full) => eur(v, full ? 2 : 0));
+  else $('chSources').innerHTML = '<p class="sub">Le graphique apparaîtra dès la première dépense ou le premier paiement.</p>';
+
+  $('tbCodes').innerHTML = s.offer_codes.length
+    ? '<tr><th>Code promo</th><th class="n">Payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th></tr>' + s.offer_codes.sort((a, b) => b.net - a.net).map((c) => `<tr><td>${esc(c.code)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.gross, 2)}</td><td class="n">${eur(c.net, 2)}</td></tr>`).join('')
+    : '<tr><td class="sub">Aucun code promo utilisé pour l’instant. Donne un code à chaque créateur (App Store Connect › Codes d’offre) : tu verras ici ce que chacun rapporte, même toutes périodes confondues.</td></tr>';
 }
 
 function showTab(name) {
@@ -474,12 +593,13 @@ function render(d) {
   $('tbTop').innerHTML = s.top_users_24h.length ? '<tr><th>Utilisateur</th><th class="n">Messages</th><th class="n">Refusés</th></tr>' + s.top_users_24h.map((t) => `<tr><td>${esc(t.user)}</td><td class="n">${t.messages}</td><td class="n">${t.rejected}</td></tr>`).join('') : '<tr><td class="sub">Aucun message ces dernières 24 h.</td></tr>';
 
   // Dépenses
-  $('tbEx').innerHTML = d.expenses.length ? '<tr><th>Mois</th><th>Dépense</th><th class="n">Montant</th><th></th></tr>' + d.expenses.map((e) => `<tr><td>${monthLabel(e.month.slice(0, 7))}</td><td>${esc(e.label)}</td><td class="n">${eur(e.amount_eur, 2)}</td><td class="n"><button class="ghost" data-del="${e.id}">Supprimer</button></td></tr>`).join('') : '<tr><td class="sub">Aucune dépense saisie.</td></tr>';
+  $('tbEx').innerHTML = d.expenses.length ? '<tr><th>Mois</th><th>Dépense</th><th>Source</th><th class="n">Montant</th><th></th></tr>' + d.expenses.map((e) => `<tr><td>${monthLabel(e.month.slice(0, 7))}</td><td>${esc(e.label)}</td><td class="sub">${e.source ? esc(srcLabel(e.source)) : '—'}</td><td class="n">${eur(e.amount_eur, 2)}</td><td class="n"><button class="ghost" data-del="${e.id}">Supprimer</button></td></tr>`).join('') : '<tr><td class="sub">Aucune dépense saisie.</td></tr>';
   document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => { await api('DELETE', null, '?id=' + b.dataset.del); load(); });
 
-  // Entonnoir
+  // Entonnoir et sources
   lastData = d;
   renderFunnel(d);
+  renderSources(d);
 
   // E-mails
   const em = d.emails;
@@ -521,6 +641,8 @@ document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => show
 showTab(location.hash.slice(1) || cfg.get('tab', 'overview'));
 window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
 document.querySelectorAll('#fnPeriod button').forEach((b) => (b.onclick = () => { fnPeriod = b.dataset.d; cfg.set('fnPeriod', fnPeriod); if (lastData) renderFunnel(lastData); }));
+document.querySelectorAll('#srcPeriod button').forEach((b) => (b.onclick = () => { srcPeriod = b.dataset.p; cfg.set('srcPeriod', srcPeriod); if (lastData) renderSources(lastData); }));
+$('exSource').innerHTML = EXPENSE_SOURCES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
 $('keyBtn').onclick = () => { KEY = $('keyInput').value.trim(); store.set(KEY); load(); };
 $('keyInput').onkeydown = (e) => { if (e.key === 'Enter') $('keyBtn').click(); };
 $('logout').onclick = () => { store.del(); KEY = ''; $('keyInput').value = ''; load(); };
@@ -540,8 +662,8 @@ $('exMonth').value = new Date().toISOString().slice(0, 7);
 $('exAdd').onclick = async () => {
   $('exErr').textContent = '';
   try {
-    await api('POST', { month: $('exMonth').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value) });
-    $('exLabel').value = ''; $('exAmount').value = ''; load();
+    await api('POST', { month: $('exMonth').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value), source: $('exSource').value || null });
+    $('exLabel').value = ''; $('exAmount').value = ''; $('exSource').value = ''; load();
   } catch (e) { $('exErr').textContent = 'Vérifie le mois, le libellé et le montant.'; }
 };
 load();
