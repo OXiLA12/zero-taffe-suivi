@@ -466,8 +466,17 @@ function renderSources(d) {
   ], (v, full) => eur(v, full ? 2 : 0));
   else $('chSources').innerHTML = '<p class="sub">Le graphique apparaîtra dès la première dépense ou le premier paiement.</p>';
 
+  // Bonus promis aux créateurs : [abonnés payants, bonus total en €]
+  const CODE_BONUS = { DAIKI: [[10, 50], [25, 150], [50, 350]] };
+  const bonusFor = (code, payers) => {
+    const tiers = CODE_BONUS[code];
+    if (!tiers) return '—';
+    const reached = tiers.filter(([n]) => payers >= n).pop();
+    const next = tiers.find(([n]) => payers < n);
+    return (reached ? `<b>${eur(reached[1])}</b>` : '0 €') + (next ? ` <span class="sub">(${int(next[0] - payers)} de plus pour ${eur(next[1])})</span>` : '');
+  };
   $('tbCodes').innerHTML = s.offer_codes.length
-    ? '<tr><th>Code promo</th><th class="n">Payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th></tr>' + s.offer_codes.sort((a, b) => b.net - a.net).map((c) => `<tr><td>${esc(c.code)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.gross, 2)}</td><td class="n">${eur(c.net, 2)}</td></tr>`).join('')
+    ? '<tr><th>Code promo</th><th class="n">Codes utilisés</th><th class="n">Devenus payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th><th class="n">Bonus dû au créateur</th></tr>' + s.offer_codes.sort((a, b) => b.net - a.net || b.uses - a.uses).map((c) => `<tr><td>${esc(c.code)}</td><td class="n">${int(c.uses ?? 0)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.gross, 2)}</td><td class="n">${eur(c.net, 2)}</td><td class="n">${bonusFor(c.code, c.payers)}</td></tr>`).join('')
     : '<tr><td class="sub">Aucun code promo utilisé pour l’instant. Donne un code à chaque créateur (App Store Connect › Codes d’offre) : tu verras ici ce que chacun rapporte, même toutes périodes confondues.</td></tr>';
 }
 
