@@ -466,17 +466,26 @@ function renderSources(d) {
   ], (v, full) => eur(v, full ? 2 : 0));
   else $('chSources').innerHTML = '<p class="sub">Le graphique apparaîtra dès la première dépense ou le premier paiement.</p>';
 
-  // Bonus promis aux créateurs : [abonnés payants, bonus total en €]
+  // Créateurs suivis par code promo, avec le bonus promis : [abonnés payants, bonus total en €]
   const CODE_BONUS = { DAIKI: [[10, 50], [25, 150], [50, 350]] };
+  const bonusOf = (code, payers) => (CODE_BONUS[code] || []).filter(([n]) => payers >= n).reduce((_, [, b]) => b, 0);
   const bonusFor = (code, payers) => {
     const tiers = CODE_BONUS[code];
     if (!tiers) return '—';
-    const reached = tiers.filter(([n]) => payers >= n).pop();
     const next = tiers.find(([n]) => payers < n);
-    return (reached ? `<b>${eur(reached[1])}</b>` : '0 €') + (next ? ` <span class="sub">(${int(next[0] - payers)} de plus pour ${eur(next[1])})</span>` : '');
+    return `<b>${eur(bonusOf(code, payers))}</b>` + (next ? ` <span class="sub">(${int(next[0] - payers)} payant${next[0] - payers > 1 ? 's' : ''} de plus pour ${eur(next[1])})</span>` : '');
   };
-  $('tbCodes').innerHTML = s.offer_codes.length
-    ? '<tr><th>Code promo</th><th class="n">Codes utilisés</th><th class="n">Devenus payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th><th class="n">Bonus dû au créateur</th></tr>' + s.offer_codes.sort((a, b) => b.net - a.net || b.uses - a.uses).map((c) => `<tr><td>${esc(c.code)}</td><td class="n">${int(c.uses ?? 0)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.gross, 2)}</td><td class="n">${eur(c.net, 2)}</td><td class="n">${bonusFor(c.code, c.payers)}</td></tr>`).join('')
+  // Ce que tu as payé au créateur : les dépenses dont le libellé contient son code (ex. « Vidéo Daiki »).
+  const paidTo = (code) => (d.expenses || []).filter((x) => String(x.label).toUpperCase().includes(code)).reduce((t, x) => t + Number(x.amount_eur), 0);
+  const codeRows = [...s.offer_codes];
+  for (const code of Object.keys(CODE_BONUS)) if (!codeRows.some((c) => c.code === code)) codeRows.push({ code, uses: 0, payers: 0, gross: 0, net: 0 });
+  $('tbCodes').innerHTML = codeRows.length
+    ? '<tr><th>Code promo</th><th class="n">Codes utilisés</th><th class="n">Devenus payants</th><th class="n">Rapporté</th><th class="n">Payé au créateur</th><th class="n">Bonus dû</th><th class="n">Bénéfice</th></tr>' +
+      codeRows.sort((a, b) => b.net - a.net || b.uses - a.uses).map((c) => {
+        const paid = paidTo(c.code), profit = c.net - paid - bonusOf(c.code, c.payers);
+        return `<tr><td>${esc(c.code)}</td><td class="n">${int(c.uses ?? 0)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.net, 2)}</td><td class="n">${paid ? eur(paid, 2) : '—'}</td><td class="n">${bonusFor(c.code, c.payers)}</td><td class="n ${paid || c.net ? (profit >= 0 ? 'pos' : 'neg') : ''}">${paid || c.net ? eur(profit, 2) : '—'}</td></tr>`;
+      }).join('') +
+      '<tr><td colspan="7" class="sub">« Rapporté » = ce qui te revient (après Apple et TVA), tout ce que ces personnes ont payé depuis. « Payé au créateur » = tes dépenses dont le libellé contient le code (ex. « Vidéo Daiki »). Les chiffres arrivent dès que le premier code est utilisé.</td></tr>'
     : '<tr><td class="sub">Aucun code promo utilisé pour l’instant. Donne un code à chaque créateur (App Store Connect › Codes d’offre) : tu verras ici ce que chacun rapporte, même toutes périodes confondues.</td></tr>';
 }
 
@@ -569,7 +578,7 @@ function render(d) {
     rows.map((r) => `<tr><td>${monthLabel(r.k)}</td><td class="n">${eur(r.revenue, 2)}</td><td class="n">${eur(r.proceeds, 2)}</td><td class="n">${eur(r.ai, 2)}</td><td class="n">${eur(r.manual, 2)}</td><td class="n ${r.profit >= 0 ? 'pos' : 'neg'}">${eur(r.profit, 2)}</td></tr>`).join('');
 
   // Abonnés (RevenueCat)
-  const labelsRC = { active_subscriptions: ['Abonnés actifs', 'Personnes qui paient en ce moment.'], active_trials: ['Essais en cours', 'Dans leurs 3 jours gratuits : futurs abonnés potentiels.'], mrr: ['Revenu mensuel récurrent', 'Ce que rapportent les abonnements chaque mois (MRR).'], revenue: ['CA 28 derniers jours', 'Tout ce qui a été encaissé sur 28 jours.'], new_customers: ['Nouveaux clients (28 j)', 'Personnes vues pour la première fois par RevenueCat.'], active_users: ['Utilisateurs actifs (28 j)', 'Personnes qui ont ouvert l’appli.'] };
+  const labelsRC = { active_subscriptions: ['Abonnés actifs', 'Personnes qui paient en ce moment.'], active_trials: ['Essais en cours', 'Dans leurs 3 jours gratuits : futurs abonnés potentiels.'], mrr: ['Revenu mensuel récurrent', 'Ce que rapportent les abonnements chaque mois (MRR).'], revenue: ['CA 28 derniers jours', 'Tout ce qui a été encaissé sur 28 jours.'], new_customers: ['Nouveaux clients (28 j)', 'Personnes vues pour la première fois par RevenueCat.'], active_users: ['Utilisateurs actifs (28 j)', 'Chiffre RevenueCat : compte aussi les vérificateurs d’Apple et tes tests. Le vrai chiffre est dans l’onglet « Utilisateurs et e-mails ».'] };
   if (!rc.configured) $('subs').innerHTML = '<div class="note"><b>⚠️ RevenueCat n’est pas encore relié</b> : sans lui, pas de chiffre d’affaires, d’abonnés ni d’essais. Dans le Terminal, dans le dossier zero-taffe :<br><code>supabase secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_PROJECT_ID=…</code><br>(RevenueCat > Project settings > API keys : crée une clé secrète v2 en lecture seule ; l’ID du projet est dans l’adresse de la page.)</div>';
   else if (rc.error) $('subs').innerHTML = `<div class="note">RevenueCat a renvoyé une erreur : ${esc(rc.error)}</div>`;
   else {
@@ -580,9 +589,10 @@ function render(d) {
 
   // Utilisateurs
   const u = d.users;
-  $('users').innerHTML = tile('Utilisateurs au total', int(u.total), 'Toutes les personnes qui ont ouvert l’appli.') +
+  const excl = u.excluded ? ` ${int(u.excluded)} compte${u.excluded > 1 ? 's' : ''} de vérification Apple et de test retiré${u.excluded > 1 ? 's' : ''}.` : '';
+  $('users').innerHTML = tile('Utilisateurs au total', int(u.total), 'Appareils qui ont ouvert l’appli (compte anonyme créé tout seul, sans inscription).' + excl) +
     tile('Nouveaux (7 jours)', int(u.new_7d), 'Installations récentes.') + tile('Nouveaux (30 jours)', int(u.new_30d), '') +
-    tile('Actifs (7 jours)', int(u.active_7d), 'Revenus dans l’appli cette semaine.') + tile('Défis à deux créés', int(d.duo.duos), '');
+    tile('Actifs (7 jours)', int(u.active_7d), 'Ont ouvert l’appli cette semaine, sans les vérificateurs d’Apple ni tes tests.') + tile('Défis à deux créés', int(d.duo.duos), '');
   const days = lastDays(30);
   lineChart($('chUsers'), days.map((x) => x.slice(8) + '/' + x.slice(5, 7)), days.map((x) => u.new_by_day[x] || 0), 'Nouveaux utilisateurs', (v) => int(Math.round(v)));
 
