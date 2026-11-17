@@ -158,7 +158,7 @@
       <div class="grid" id="crTiles"></div>
       <h2>Créateur par créateur</h2>
       <div class="card scroll"><table id="tbCreators"></table></div>
-      <p class="sub">« Rapporté » = ce qui te revient (après Apple et TVA), tout ce que les personnes venues avec le code ont payé depuis. « Dû » = fixe + commission par abonné payant + bonus des paliers atteints. « Déjà payé » = tes dépenses (onglet Dépenses) dont le libellé contient le code, ex. « Paiement DAIKI ».</p>
+      <p class="sub">Clique sur un code pour voir tout le détail (mois par mois, annulations, remboursements…). « Payé par les clients » = prix TTC payé. « Rapporté » = ce qui te revient (après Apple et TVA), tout ce que les personnes venues avec le code ont payé depuis. « Retour » = rapporté ÷ dû : au-dessus de 1 ×, le créateur te fait gagner de l’argent. « Dû » = fixe + commission par abonné payant + bonus des paliers atteints. « Déjà payé » = tes dépenses (onglet Dépenses) dont le libellé contient le code, ex. « Paiement DAIKI ».</p>
       <h2>Commissions à payer, mois par mois</h2>
       <div class="card scroll"><table id="tbCrMonths"></table></div>
       <p class="sub">Un abonné compte dans le mois de son <b>1er vrai paiement</b> (après les 7 jours gratuits). Paie la commission d’un mois vers le 10 du mois suivant : Apple te verse l’argent avec environ un mois de décalage, et un remboursement éventuel aura eu le temps d’arriver.</p>
@@ -504,7 +504,7 @@ function creatorRows(d) {
   // Codes utilisés mais pas encore déclarés comme créateur : on les montre quand même.
   for (const code of Object.keys(stats)) if (!list.some((c) => c.code === code)) list.push({ code, handle: null, fixed_eur: 0, per_payer_eur: 0, tiers: [], status: 'accord', unknown: true });
   return list.map((c) => {
-    const o = stats[c.code] || { uses: 0, payers: 0, net: 0, payers_by_month: {} };
+    const o = stats[c.code] || { uses: 0, payers: 0, gross: 0, net: 0, payers_by_month: {}, uses_by_month: {}, net_by_month: {}, gross_by_month: {} };
     const fixed = c.status === 'contacté' ? 0 : Number(c.fixed_eur) || 0;
     const commission = (Number(c.per_payer_eur) || 0) * o.payers;
     const bonus = tierBonus(c.tiers, o.payers);
@@ -534,14 +534,42 @@ function renderCreators(d) {
     tile('Bénéfice après créateurs', eur(sum('profit'), 2), 'Rapporté − tout ce que tu leur dois.', sum('profit') >= 0 ? 'pos' : 'neg');
 
   const deal = (r) => [r.fixed_eur ? eur(r.fixed_eur) + ' fixe' : '', r.per_payer_eur ? eur(r.per_payer_eur, Number.isInteger(+r.per_payer_eur) ? 0 : 2) + ' / payant' : '', (r.tiers || []).length ? 'paliers ' + r.tiers.map(([n, b]) => `${n}→${eur(b)}`).join(', ') : ''].filter(Boolean).join(' + ') || (r.unknown ? 'Pas déclaré ici' : '—');
+  const day = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+  const ratio = (a, b) => (b ? (a / b).toFixed(2).replace('.', ',') + ' ×' : '—');
+  const COLS = 14;
   $('tbCreators').innerHTML = rows.length
-    ? '<tr><th>Code</th><th>Créateur</th><th>Accord</th><th>Statut</th><th class="n">Codes utilisés</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Dû</th><th class="n">Déjà payé</th><th class="n">Reste à payer</th><th class="n">Bénéfice</th><th></th></tr>' +
+    ? '<tr><th>Code</th><th>Créateur</th><th>Statut</th><th class="n">Codes utilisés</th><th class="n">Essais en cours</th><th class="n">Devenus payants</th><th class="n">Abonnés actifs</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th><th class="n">Dû</th><th class="n">Déjà payé</th><th class="n">Reste à payer</th><th class="n">Bénéfice</th><th class="n">Retour</th></tr>' +
       rows.sort((a, b) => (a.status === 'contacté') - (b.status === 'contacté') || b.o.net - a.o.net || a.code.localeCompare(b.code)).map((r) => {
-        const hint = r.next ? `<div class="sub">${int(r.next[0] - r.o.payers)} payant${r.next[0] - r.o.payers > 1 ? 's' : ''} de plus → bonus ${eur(r.next[1])}</div>` : '';
-        const detail = [r.fixed ? 'fixe ' + eur(r.fixed) : '', r.commission ? 'commission ' + eur(r.commission, 2) : '', r.bonus ? 'bonus ' + eur(r.bonus) : ''].filter(Boolean).join(' + ');
-        return `<tr><td><b>${esc(r.code)}</b></td><td>${r.handle ? `<a href="https://www.tiktok.com/@${encodeURIComponent(r.handle)}" target="_blank" rel="noopener">@${esc(r.handle)}</a>` : '—'}</td><td class="sub">${esc(deal(r))}</td><td>${esc(STATUS_LABEL[r.status] || r.status)}</td><td class="n">${int(r.o.uses)}</td><td class="n">${int(r.o.payers)}${hint}</td><td class="n">${eur(r.o.net, 2)}</td><td class="n" title="${esc(detail)}">${eur(r.due, 2)}</td><td class="n">${r.paid ? eur(r.paid, 2) : '—'}</td><td class="n ${r.left > 0.005 ? 'neg' : ''}"><b>${eur(Math.max(0, r.left), 2)}</b>${r.left < -0.005 ? `<div class="sub">avance ${eur(-r.left, 2)}</div>` : ''}</td><td class="n ${r.o.net || r.due ? (r.profit >= 0 ? 'pos' : 'neg') : ''}">${r.o.net || r.due ? eur(r.profit, 2) : '—'}</td><td>${r.unknown ? '' : `<button class="ghost" data-cr-edit="${esc(r.code)}">Modifier</button> <button class="ghost" data-cr-del="${esc(r.code)}">Retirer</button>`}</td></tr>`;
+        const o = r.o;
+        const hint = r.next ? `<div class="sub">${int(r.next[0] - o.payers)} de plus → bonus ${eur(r.next[1])}</div>` : '';
+        const detail = [r.fixed ? 'fixe ' + eur(r.fixed) : '', r.commission ? 'commission ' + eur(r.commission, 2) : '', r.bonus ? 'bonus ' + eur(r.bonus) : ''].filter(Boolean).join(' + ') || 'rien pour l’instant';
+        const months = [...new Set([...Object.keys(o.uses_by_month || {}), ...Object.keys(o.payers_by_month || {}), ...Object.keys(o.net_by_month || {})])].sort().reverse();
+        const monthTable = months.length
+          ? '<table style="margin-top:8px"><tr><th>Mois</th><th class="n">Codes utilisés</th><th class="n">Nouveaux payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th>' + (r.per_payer_eur ? '<th class="n">Commission</th>' : '') + '</tr>' +
+            months.map((m) => `<tr><td>${monthLabel(m)}</td><td class="n">${int((o.uses_by_month || {})[m] || 0)}</td><td class="n">${int((o.payers_by_month || {})[m] || 0)}</td><td class="n">${eur((o.gross_by_month || {})[m] || 0, 2)}</td><td class="n">${eur((o.net_by_month || {})[m] || 0, 2)}</td>${r.per_payer_eur ? `<td class="n">${eur(((o.payers_by_month || {})[m] || 0) * r.per_payer_eur, 2)}</td>` : ''}</tr>`).join('') + '</table>'
+          : '<p class="sub">Pas encore d’historique mois par mois.</p>';
+        const facts = [
+          ['Accord', esc(deal(r))],
+          ['Compte', r.handle ? `<a href="https://www.tiktok.com/@${encodeURIComponent(r.handle)}" target="_blank" rel="noopener">@${esc(r.handle)}</a>` : '—'],
+          ['Taux code → payant', pct(o.payers, o.uses)],
+          ['N’ont pas payé après l’essai', int(o.not_converted || 0)],
+          ['Ont coupé le renouvellement', int(o.stopped || 0)],
+          ['Renouvellements payés', int(o.renewals || 0)],
+          ['Remboursements', o.refunds ? `${int(o.refunds)} (${eur(o.refund_eur, 2)})` : '0'],
+          ['Rapporté par payant', o.payers ? eur(o.net / o.payers, 2) : '—'],
+          ['Coût par payant', o.payers && r.due ? eur(r.due / o.payers, 2) : '—'],
+          ['Détail de ce qui est dû', esc(detail)],
+          ['1er code utilisé', day(o.first_use)],
+          ['Dernier code utilisé', day(o.last_use)],
+        ];
+        const detailRow = `<tr class="crDetail" data-for="${esc(r.code)}" hidden><td colspan="${COLS}" style="background:var(--bg2, transparent)"><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">${facts.map(([k, v]) => `<div><div class="k-label">${k}</div><div>${v}</div></div>`).join('')}</div>${monthTable}${r.unknown ? '' : `<div class="row" style="margin-top:8px"><button class="ghost" data-cr-edit="${esc(r.code)}">Modifier</button><button class="ghost" data-cr-del="${esc(r.code)}">Retirer</button></div>`}</td></tr>`;
+        return `<tr><td><button class="ghost" data-cr-open="${esc(r.code)}" aria-expanded="false" title="Voir le détail">▸ <b>${esc(r.code)}</b></button></td><td>${r.handle ? '@' + esc(r.handle) : '—'}</td><td>${esc(STATUS_LABEL[r.status] || r.status)}</td><td class="n">${int(o.uses)}</td><td class="n">${int(o.trialing || 0)}</td><td class="n">${int(o.payers)} <span class="sub">(${pct(o.payers, o.uses)})</span>${hint}</td><td class="n">${int(o.active || 0)}</td><td class="n">${eur(o.gross, 2)}</td><td class="n">${eur(o.net, 2)}</td><td class="n" title="${esc(detail)}">${eur(r.due, 2)}</td><td class="n">${r.paid ? eur(r.paid, 2) : '—'}</td><td class="n ${r.left > 0.005 ? 'neg' : ''}"><b>${eur(Math.max(0, r.left), 2)}</b>${r.left < -0.005 ? `<div class="sub">avance ${eur(-r.left, 2)}</div>` : ''}</td><td class="n ${o.net || r.due ? (r.profit >= 0 ? 'pos' : 'neg') : ''}">${o.net || r.due ? eur(r.profit, 2) : '—'}</td><td class="n ${r.due ? (o.net >= r.due ? 'pos' : 'neg') : ''}">${ratio(o.net, r.due)}</td></tr>` + detailRow;
       }).join('')
     : '<tr><td class="sub">Aucun créateur pour l’instant. Ajoute-le en bas de la page.</td></tr>';
+  document.querySelectorAll('[data-cr-open]').forEach((b) => (b.onclick = () => {
+    const row = document.querySelector(`.crDetail[data-for="${CSS.escape(b.dataset.crOpen)}"]`);
+    row.hidden = !row.hidden; b.setAttribute('aria-expanded', String(!row.hidden)); b.innerHTML = (row.hidden ? '▸ ' : '▾ ') + `<b>${esc(b.dataset.crOpen)}</b>`;
+  }));
 
   // Commission par mois (fixes et bonus de paliers à part : ils ne dépendent pas du mois).
   const months = {};
