@@ -116,6 +116,7 @@
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-tab="overview">Vue d’ensemble</button>
       <button role="tab" data-tab="sources">Sources</button>
+      <button role="tab" data-tab="creators">Créateurs</button>
       <button role="tab" data-tab="funnel">Entonnoir</button>
       <button role="tab" data-tab="ads">Pubs</button>
       <button role="tab" data-tab="money">Revenus</button>
@@ -147,9 +148,34 @@
         <div class="legend"><span><i class="sw" style="background:var(--s2)"></i>Dépensé</span><span><i class="sw" style="background:var(--s1)"></i>Rapporté</span></div>
         <div class="chart" id="chSources"></div>
       </div>
-      <h2>Codes promo des créateurs</h2>
-      <div class="card scroll"><table id="tbCodes"></table></div>
+      <p class="sub">Les codes promo des créateurs et ce que tu leur dois sont dans l’onglet <b>Créateurs</b>.</p>
       <div class="note" style="margin-top:12px"><b>Comment ça marche</b><br>• La source vient de la question du quiz (version 1.0.3 de l’appli). Sur TikTok, Instagram, YouTube et Snapchat, la personne précise : pub, créateur ou compte Zéro Taffe.<br>• Les paiements arrivent tout seuls de RevenueCat, même les renouvellements des mois suivants.<br>• Dépenses : TikTok Ads est lu automatiquement. Le reste (influenceurs, ChatGPT, Apple Ads…) se saisit dans l’onglet Dépenses en choisissant sa source.<br>• Repère : un client payant te rapporte environ 28 € la 1re année. Si une source coûte plus de 28 € par payant, elle perd de l’argent.</div>
+    </section>
+
+    <section class="tab" id="tab-creators">
+      <h2>Tes créateurs partenaires</h2>
+      <div id="crStatus"></div>
+      <div class="grid" id="crTiles"></div>
+      <h2>Créateur par créateur</h2>
+      <div class="card scroll"><table id="tbCreators"></table></div>
+      <p class="sub">« Rapporté » = ce qui te revient (après Apple et TVA), tout ce que les personnes venues avec le code ont payé depuis. « Dû » = fixe + commission par abonné payant + bonus des paliers atteints. « Déjà payé » = tes dépenses (onglet Dépenses) dont le libellé contient le code, ex. « Paiement DAIKI ».</p>
+      <h2>Commissions à payer, mois par mois</h2>
+      <div class="card scroll"><table id="tbCrMonths"></table></div>
+      <p class="sub">Un abonné compte dans le mois de son <b>1er vrai paiement</b> (après les 7 jours gratuits). Paie la commission d’un mois vers le 10 du mois suivant : Apple te verse l’argent avec environ un mois de décalage, et un remboursement éventuel aura eu le temps d’arriver.</p>
+      <h2>Ajouter ou modifier un créateur</h2>
+      <div class="card">
+        <div class="row">
+          <input id="crCode" placeholder="Code (ex. CLEM)" maxlength="20" style="width:130px;text-transform:uppercase" />
+          <input id="crHandle" placeholder="Compte TikTok" maxlength="40" style="width:160px" />
+          <input id="crFixed" type="number" min="0" step="1" placeholder="Fixe €" style="width:100px" />
+          <input id="crPer" type="number" min="0" step="0.5" placeholder="€ / payant" style="width:110px" />
+          <input id="crTiers" placeholder="Paliers (ex. 10:50, 25:150)" style="flex:1;min-width:180px" />
+          <select id="crStatusSel" aria-label="Statut"><option value="contacté">Contacté</option><option value="accord" selected>Accord</option><option value="posté">A posté</option><option value="terminé">Terminé</option></select>
+          <button id="crAdd">Enregistrer</button>
+        </div>
+        <p id="crErr" class="err"></p>
+        <p class="sub" style="margin-bottom:0">Crée d’abord le code dans App Store Connect (Abonnements › Codes d’offre › code personnalisé), puis ajoute-le ici avec le même nom. Pour modifier un créateur, clique sur « Modifier » dans le tableau, change les cases, puis « Enregistrer ».</p>
+      </div>
     </section>
 
     <section class="tab" id="tab-funnel">
@@ -421,7 +447,7 @@ function verdict(r) {
 function renderSources(d) {
   document.querySelectorAll('#srcPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === srcPeriod)));
   const s = d.sources;
-  if (!s) { $('srcStatus').innerHTML = '<div class="note">Les sources ne sont pas encore disponibles.</div>'; ['srcTiles', 'tbSources', 'chSources', 'tbCodes'].forEach((id) => ($(id).innerHTML = '')); return; }
+  if (!s) { $('srcStatus').innerHTML = '<div class="note">Les sources ne sont pas encore disponibles.</div>'; ['srcTiles', 'tbSources', 'chSources'].forEach((id) => ($(id).innerHTML = '')); return; }
   const months = periodMonths(srcPeriod);
   const inP = (m) => !months || months.has(m);
 
@@ -465,28 +491,75 @@ function renderSources(d) {
     { name: 'Rapporté', values: chartP.map((p) => rows[p].net), color: 'var(--s1)' },
   ], (v, full) => eur(v, full ? 2 : 0));
   else $('chSources').innerHTML = '<p class="sub">Le graphique apparaîtra dès la première dépense ou le premier paiement.</p>';
+}
 
-  // Créateurs suivis par code promo, avec le bonus promis : [abonnés payants, bonus total en €]
-  const CODE_BONUS = { DAIKI: [[10, 50], [25, 150], [50, 350]] };
-  const bonusOf = (code, payers) => (CODE_BONUS[code] || []).filter(([n]) => payers >= n).reduce((_, [, b]) => b, 0);
-  const bonusFor = (code, payers) => {
-    const tiers = CODE_BONUS[code];
-    if (!tiers) return '—';
-    const next = tiers.find(([n]) => payers < n);
-    return `<b>${eur(bonusOf(code, payers))}</b>` + (next ? ` <span class="sub">(${int(next[0] - payers)} payant${next[0] - payers > 1 ? 's' : ''} de plus pour ${eur(next[1])})</span>` : '');
-  };
-  // Ce que tu as payé au créateur : les dépenses dont le libellé contient son code (ex. « Vidéo Daiki »).
-  const paidTo = (code) => (d.expenses || []).filter((x) => String(x.label).toUpperCase().includes(code)).reduce((t, x) => t + Number(x.amount_eur), 0);
-  const codeRows = [...s.offer_codes];
-  for (const code of Object.keys(CODE_BONUS)) if (!codeRows.some((c) => c.code === code)) codeRows.push({ code, uses: 0, payers: 0, gross: 0, net: 0 });
-  $('tbCodes').innerHTML = codeRows.length
-    ? '<tr><th>Code promo</th><th class="n">Codes utilisés</th><th class="n">Devenus payants</th><th class="n">Rapporté</th><th class="n">Payé au créateur</th><th class="n">Bonus dû</th><th class="n">Bénéfice</th></tr>' +
-      codeRows.sort((a, b) => b.net - a.net || b.uses - a.uses).map((c) => {
-        const paid = paidTo(c.code), profit = c.net - paid - bonusOf(c.code, c.payers);
-        return `<tr><td>${esc(c.code)}</td><td class="n">${int(c.uses ?? 0)}</td><td class="n">${int(c.payers)}</td><td class="n">${eur(c.net, 2)}</td><td class="n">${paid ? eur(paid, 2) : '—'}</td><td class="n">${bonusFor(c.code, c.payers)}</td><td class="n ${paid || c.net ? (profit >= 0 ? 'pos' : 'neg') : ''}">${paid || c.net ? eur(profit, 2) : '—'}</td></tr>`;
-      }).join('') +
-      '<tr><td colspan="7" class="sub">« Rapporté » = ce qui te revient (après Apple et TVA), tout ce que ces personnes ont payé depuis. « Payé au créateur » = tes dépenses dont le libellé contient le code (ex. « Vidéo Daiki »). Les chiffres arrivent dès que le premier code est utilisé.</td></tr>'
-    : '<tr><td class="sub">Aucun code promo utilisé pour l’instant. Donne un code à chaque créateur (App Store Connect › Codes d’offre) : tu verras ici ce que chacun rapporte, même toutes périodes confondues.</td></tr>';
+// ---------- Créateurs : codes promo, ce qu'ils rapportent, ce que tu leur dois ----------
+const STATUS_LABEL = { 'contacté': 'Contacté', accord: 'Accord', 'posté': 'A posté', 'terminé': 'Terminé' };
+const tierBonus = (tiers, payers) => (tiers || []).filter(([n]) => payers >= n).reduce((m, [, b]) => Math.max(m, b), 0);
+const codeIn = (label, code) => new RegExp('(^|[^A-Z0-9])' + code + '($|[^A-Z0-9])').test(String(label).toUpperCase());
+
+function creatorRows(d) {
+  const stats = Object.fromEntries(((d.sources && d.sources.offer_codes) || []).map((o) => [o.code, o]));
+  const list = [...(d.creators || [])];
+  // Codes utilisés mais pas encore déclarés comme créateur : on les montre quand même.
+  for (const code of Object.keys(stats)) if (!list.some((c) => c.code === code)) list.push({ code, handle: null, fixed_eur: 0, per_payer_eur: 0, tiers: [], status: 'accord', unknown: true });
+  return list.map((c) => {
+    const o = stats[c.code] || { uses: 0, payers: 0, net: 0, payers_by_month: {} };
+    const fixed = c.status === 'contacté' ? 0 : Number(c.fixed_eur) || 0;
+    const commission = (Number(c.per_payer_eur) || 0) * o.payers;
+    const bonus = tierBonus(c.tiers, o.payers);
+    const due = fixed + commission + bonus;
+    const paid = (d.expenses || []).filter((x) => codeIn(x.label, c.code)).reduce((t, x) => t + Number(x.amount_eur), 0);
+    const next = (c.tiers || []).find(([n]) => o.payers < n);
+    return { ...c, o, fixed, commission, bonus, due, paid, left: due - paid, profit: o.net - due, next };
+  });
+}
+
+function renderCreators(d) {
+  if (!d.creators) {
+    $('crStatus').innerHTML = '<div class="note">La liste des créateurs n’est pas encore disponible (table admin_creators à créer).</div>';
+    ['crTiles', 'tbCreators', 'tbCrMonths'].forEach((id) => ($(id).innerHTML = ''));
+    return;
+  }
+  const rows = creatorRows(d);
+  const live = rows.filter((r) => r.status !== 'contacté');
+  const sum = (f) => live.reduce((t, r) => t + r[f], 0);
+  const payers = live.reduce((t, r) => t + r.o.payers, 0);
+  $('crStatus').innerHTML = payers ? '' : '<div class="note" style="margin-bottom:12px">Aucun abonné payant venu d’un code créateur pour l’instant. Les chiffres se remplissent tout seuls dès le premier paiement (après les 7 jours gratuits).</div>';
+  $('crTiles').innerHTML =
+    tile('Reste à payer aux créateurs', eur(sum('left'), 2), 'Dû − déjà payé, tous créateurs confondus.', sum('left') > 0 ? 'neg' : '', 'hero') +
+    tile('Créateurs en accord', int(live.filter((r) => !r.unknown).length), `${int(rows.length - live.length)} contacté${rows.length - live.length > 1 ? 's' : ''} sans accord.`) +
+    tile('Abonnés payants via créateurs', int(payers), `${int(live.reduce((t, r) => t + r.o.uses, 0))} codes utilisés en tout.`) +
+    tile('Rapporté par les créateurs', eur(sum('profit') + sum('due'), 2), 'Ce qui te revient, payé par ces abonnés.') +
+    tile('Bénéfice après créateurs', eur(sum('profit'), 2), 'Rapporté − tout ce que tu leur dois.', sum('profit') >= 0 ? 'pos' : 'neg');
+
+  const deal = (r) => [r.fixed_eur ? eur(r.fixed_eur) + ' fixe' : '', r.per_payer_eur ? eur(r.per_payer_eur, Number.isInteger(+r.per_payer_eur) ? 0 : 2) + ' / payant' : '', (r.tiers || []).length ? 'paliers ' + r.tiers.map(([n, b]) => `${n}→${eur(b)}`).join(', ') : ''].filter(Boolean).join(' + ') || (r.unknown ? 'Pas déclaré ici' : '—');
+  $('tbCreators').innerHTML = rows.length
+    ? '<tr><th>Code</th><th>Créateur</th><th>Accord</th><th>Statut</th><th class="n">Codes utilisés</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Dû</th><th class="n">Déjà payé</th><th class="n">Reste à payer</th><th class="n">Bénéfice</th><th></th></tr>' +
+      rows.sort((a, b) => (a.status === 'contacté') - (b.status === 'contacté') || b.o.net - a.o.net || a.code.localeCompare(b.code)).map((r) => {
+        const hint = r.next ? `<div class="sub">${int(r.next[0] - r.o.payers)} payant${r.next[0] - r.o.payers > 1 ? 's' : ''} de plus → bonus ${eur(r.next[1])}</div>` : '';
+        const detail = [r.fixed ? 'fixe ' + eur(r.fixed) : '', r.commission ? 'commission ' + eur(r.commission, 2) : '', r.bonus ? 'bonus ' + eur(r.bonus) : ''].filter(Boolean).join(' + ');
+        return `<tr><td><b>${esc(r.code)}</b></td><td>${r.handle ? `<a href="https://www.tiktok.com/@${encodeURIComponent(r.handle)}" target="_blank" rel="noopener">@${esc(r.handle)}</a>` : '—'}</td><td class="sub">${esc(deal(r))}</td><td>${esc(STATUS_LABEL[r.status] || r.status)}</td><td class="n">${int(r.o.uses)}</td><td class="n">${int(r.o.payers)}${hint}</td><td class="n">${eur(r.o.net, 2)}</td><td class="n" title="${esc(detail)}">${eur(r.due, 2)}</td><td class="n">${r.paid ? eur(r.paid, 2) : '—'}</td><td class="n ${r.left > 0.005 ? 'neg' : ''}"><b>${eur(Math.max(0, r.left), 2)}</b>${r.left < -0.005 ? `<div class="sub">avance ${eur(-r.left, 2)}</div>` : ''}</td><td class="n ${r.o.net || r.due ? (r.profit >= 0 ? 'pos' : 'neg') : ''}">${r.o.net || r.due ? eur(r.profit, 2) : '—'}</td><td>${r.unknown ? '' : `<button class="ghost" data-cr-edit="${esc(r.code)}">Modifier</button> <button class="ghost" data-cr-del="${esc(r.code)}">Retirer</button>`}</td></tr>`;
+      }).join('')
+    : '<tr><td class="sub">Aucun créateur pour l’instant. Ajoute-le en bas de la page.</td></tr>';
+
+  // Commission par mois (fixes et bonus de paliers à part : ils ne dépendent pas du mois).
+  const months = {};
+  for (const r of live) if (r.per_payer_eur) for (const [m, n] of Object.entries(r.o.payers_by_month || {})) (months[m] ??= []).push({ code: r.code, n, amount: n * r.per_payer_eur });
+  const keys = Object.keys(months).sort().reverse();
+  $('tbCrMonths').innerHTML = keys.length
+    ? '<tr><th>Mois du 1er paiement</th><th>Créateur</th><th class="n">Nouveaux payants</th><th class="n">Commission</th><th>À payer vers</th></tr>' +
+      keys.flatMap((m) => months[m].map((x) => { const pay = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7), 10)); return `<tr><td>${monthLabel(m)}</td><td>${esc(x.code)}</td><td class="n">${int(x.n)}</td><td class="n"><b>${eur(x.amount, 2)}</b></td><td>le ${pay.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</td></tr>`; })).join('')
+    : '<tr><td class="sub">Pas encore de commission : elle apparaît dès qu’un abonné venu d’un code créateur paie pour la première fois.</td></tr>';
+  document.querySelectorAll('[data-cr-edit]').forEach((b) => (b.onclick = () => {
+    const r = rows.find((x) => x.code === b.dataset.crEdit);
+    $('crCode').value = r.code; $('crHandle').value = r.handle || ''; $('crFixed').value = r.fixed_eur || ''; $('crPer').value = r.per_payer_eur || '';
+    $('crTiers').value = (r.tiers || []).map(([n, v]) => `${n}:${v}`).join(', '); $('crStatusSel').value = r.status; $('crCode').focus();
+  }));
+  document.querySelectorAll('[data-cr-del]').forEach((b) => (b.onclick = async () => {
+    if (!confirm(`Retirer ${b.dataset.crDel} de la liste ? (le code reste actif dans App Store Connect)`)) return;
+    await api('DELETE', null, '?creator=' + encodeURIComponent(b.dataset.crDel)); load();
+  }));
 }
 
 function showTab(name) {
@@ -619,6 +692,7 @@ function render(d) {
   lastData = d;
   renderFunnel(d);
   renderSources(d);
+  renderCreators(d);
 
   // E-mails
   const em = d.emails;
@@ -684,6 +758,14 @@ $('exAdd').onclick = async () => {
     await api('POST', { month: $('exMonth').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value), source: $('exSource').value || null });
     $('exLabel').value = ''; $('exAmount').value = ''; $('exSource').value = ''; load();
   } catch (e) { $('exErr').textContent = 'Vérifie le mois, le libellé et le montant.'; }
+};
+$('crAdd').onclick = async () => {
+  $('crErr').textContent = '';
+  const tiers = $('crTiers').value.split(/[,;]/).map((t) => t.split(':').map((x) => Number(x.trim()))).filter((t) => t.length === 2 && t.every((x) => x >= 0 && !isNaN(x)));
+  try {
+    await api('POST', { creator: { code: $('crCode').value.trim().toUpperCase(), handle: $('crHandle').value, fixed_eur: Number($('crFixed').value) || 0, per_payer_eur: Number($('crPer').value) || 0, tiers, status: $('crStatusSel').value } });
+    ['crCode', 'crHandle', 'crFixed', 'crPer', 'crTiers'].forEach((id) => ($(id).value = '')); load();
+  } catch (e) { $('crErr').textContent = 'Vérifie le code : 2 à 20 lettres ou chiffres, sans espace.'; }
 };
 load();
 </script>
