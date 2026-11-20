@@ -116,6 +116,7 @@
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-tab="overview">Vue d’ensemble</button>
       <button role="tab" data-tab="sources">Sources</button>
+      <button role="tab" data-tab="subscribers">Abonnés</button>
       <button role="tab" data-tab="creators">Créateurs</button>
       <button role="tab" data-tab="funnel">Entonnoir</button>
       <button role="tab" data-tab="ads">Pubs</button>
@@ -176,6 +177,14 @@
         <p id="crErr" class="err"></p>
         <p class="sub" style="margin-bottom:0">Crée d’abord le code dans App Store Connect (Abonnements › Codes d’offre › code personnalisé), puis ajoute-le ici avec le même nom. Pour modifier un créateur, clique sur « Modifier » dans le tableau, change les cases, puis « Enregistrer ».</p>
       </div>
+    </section>
+
+    <section class="tab" id="tab-subscribers">
+      <h2>Tes abonnés</h2>
+      <div class="grid" id="subTiles"></div>
+      <h2>Abonné par abonné</h2>
+      <div class="card scroll"><table id="tbSubs"></table></div>
+      <p class="sub">L’appli n’a pas de compte avec nom : chaque personne est anonyme. Tu vois son e-mail seulement si elle l’a donné dans le quiz (avec son accord). Les achats des vérificateurs d’Apple et tes tests ne sont pas comptés. Les montants sont ce que la personne a payé (prix TTC) ; « Te revient » = après Apple et TVA.</p>
     </section>
 
     <section class="tab" id="tab-funnel">
@@ -609,6 +618,43 @@ function renderCreators(d) {
   }));
 }
 
+// ---------- Abonnés : qui a pris un abonnement, et où il en est ----------
+const PLAN_LABEL = { zt_annual: 'Annuel', zt_monthly: 'Mensuel', zt_annual_rescue: 'Annuel -50 %', zt_lifetime: 'À vie' };
+const SUB_STATUS = {
+  trial: ['Essai en cours', 'warn'],
+  trial_cancelled: ['Essai annulé', 'bad'],
+  active: ['Abonné payant', 'good'],
+  cancelled: ['Résilié', 'warn'],
+  billing: ['Problème de paiement', 'bad'],
+  expired: ['Terminé', ''],
+  refunded: ['Remboursé', 'bad'],
+};
+function renderSubscribers(d) {
+  const list = d.subscribers;
+  if (!list) { $('subTiles').innerHTML = '<div class="note">La liste des abonnés n’est pas encore disponible.</div>'; $('tbSubs').innerHTML = ''; return; }
+  const n = (st) => list.filter((x) => x.status === st).length;
+  const paying = n('active'), trials = n('trial'), stopped = n('cancelled') + n('trial_cancelled'), ended = n('expired') + n('refunded');
+  $('subTiles').innerHTML =
+    tile('Abonnés payants', int(paying), 'Ont payé et leur abonnement continue.', paying ? 'pos' : '', 'hero') +
+    tile('Essais en cours', int(trials), 'Dans leurs jours gratuits : deviendront payants s’ils n’annulent pas.') +
+    tile('Ont annulé', int(stopped), 'Renouvellement coupé : l’accès reste jusqu’à la fin de la période.', stopped ? 'neg' : '') +
+    tile('Terminés ou remboursés', int(ended), 'Abonnement fini.');
+  const day = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—');
+  const next = (x) =>
+    x.status === 'trial' ? `1er paiement le ${day(x.ends_at)}` :
+    x.status === 'active' ? `Renouvellement le ${day(x.ends_at)}` :
+    x.status === 'cancelled' || x.status === 'trial_cancelled' ? `Accès jusqu’au ${day(x.ends_at)}` :
+    x.status === 'billing' ? 'Apple réessaie de prélever' : x.ends_at ? `Fini le ${day(x.ends_at)}` : '—';
+  $('tbSubs').innerHTML = list.length
+    ? '<tr><th>Abonné</th><th>Formule</th><th>Depuis</th><th>État</th><th>Prochaine étape</th><th class="n">Payé</th><th class="n">Te revient</th><th>Source</th><th>Code</th></tr>' +
+      list.map((x) => {
+        const [lab, cls] = SUB_STATUS[x.status] || [x.status, ''];
+        const who = x.email ? esc(x.email) : `<span class="sub">Anonyme${x.id ? ' · #' + esc(x.id) : ''}</span>`;
+        return `<tr><td>${who}</td><td>${esc(PLAN_LABEL[x.plan] || x.plan)}</td><td>${day(x.started_at)}</td><td><span class="pill ${cls}">${esc(lab)}</span></td><td class="sub">${esc(next(x))}</td><td class="n">${eur(x.gross, 2)}</td><td class="n">${eur(x.net, 2)}</td><td class="sub">${x.source ? esc(srcLabel(x.source)) : '—'}</td><td>${x.code ? esc(x.code) : '—'}</td></tr>`;
+      }).join('')
+    : '<tr><td class="sub">Pas encore d’abonné.</td></tr>';
+}
+
 function showTab(name) {
   const tabs = [...document.querySelectorAll('#tabs button')];
   if (!tabs.some((b) => b.dataset.tab === name)) name = 'overview';
@@ -740,6 +786,7 @@ function render(d) {
   renderFunnel(d);
   renderSources(d);
   renderCreators(d);
+  renderSubscribers(d);
 
   // E-mails
   const em = d.emails;
