@@ -184,7 +184,7 @@
       <div class="grid" id="subTiles"></div>
       <h2>Abonné par abonné</h2>
       <div class="card scroll"><table id="tbSubs"></table></div>
-      <p class="sub">L’appli n’a pas de compte avec nom : chaque personne est anonyme. Tu vois son e-mail seulement si elle l’a donné dans le quiz (avec son accord). Les achats des vérificateurs d’Apple et tes tests ne sont pas comptés. Les montants sont ce que la personne a payé (prix TTC) ; « Te revient » = après Apple et TVA.</p>
+      <p class="sub">L’appli n’a pas de compte : tu vois le prénom donné dans le quiz (envoyé avec l’abonnement à partir de la version 1.0.5, ou laissé avec l’e-mail) et l’e-mail seulement si la personne l’a donné avec son accord. Les achats des vérificateurs d’Apple et tes tests ne sont pas comptés. Les montants sont ce que la personne a payé (prix TTC) ; « Te revient » = après Apple et TVA.</p>
     </section>
 
     <section class="tab" id="tab-funnel">
@@ -649,7 +649,9 @@ function renderSubscribers(d) {
     ? '<tr><th>Abonné</th><th>Formule</th><th>Depuis</th><th>État</th><th>Prochaine étape</th><th class="n">Payé</th><th class="n">Te revient</th><th>Source</th><th>Code</th></tr>' +
       list.map((x) => {
         const [lab, cls] = SUB_STATUS[x.status] || [x.status, ''];
-        const who = x.email ? esc(x.email) : `<span class="sub">Anonyme${x.id ? ' · #' + esc(x.id) : ''}</span>`;
+        const who = x.name || x.email
+          ? `${x.name ? `<b>${esc(x.name)}</b>` : ''}${x.name && x.email ? '<br>' : ''}${x.email ? `<span class="sub">${esc(x.email)}</span>` : ''}`
+          : `<span class="sub">Anonyme${x.id ? ' · #' + esc(x.id) : ''}</span>`;
         return `<tr><td>${who}</td><td>${esc(PLAN_LABEL[x.plan] || x.plan)}</td><td>${day(x.started_at)}</td><td><span class="pill ${cls}">${esc(lab)}</span></td><td class="sub">${esc(next(x))}</td><td class="n">${eur(x.gross, 2)}</td><td class="n">${eur(x.net, 2)}</td><td class="sub">${x.source ? esc(srcLabel(x.source)) : '—'}</td><td>${x.code ? esc(x.code) : '—'}</td></tr>`;
       }).join('')
     : '<tr><td class="sub">Pas encore d’abonné.</td></tr>';
