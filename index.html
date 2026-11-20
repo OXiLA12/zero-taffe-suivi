@@ -188,6 +188,8 @@
       <h2>Le paywall</h2>
       <div class="grid" id="fnPaywall"></div>
       <div class="card" style="margin-top:12px"><table id="tbOffers"></table></div>
+      <h2>Pourquoi l’achat n’aboutit pas</h2>
+      <div class="card scroll"><table id="tbFails"></table></div>
       <h2>Question par question</h2>
       <div class="card">
         <p class="sub" style="margin-top:0">Barre = part des personnes encore là à cet écran. « Perte » = part perdue depuis l’écran précédent. En orange : l’écran où l’on perd le plus de monde.</p>
@@ -373,14 +375,14 @@ const STEP_LABELS = {
   partner: 'Avec quelqu’un ?', duo: 'Défi à deux', motivation: 'Motivation /10', notifications: 'Notifications', account: 'E-mail (sauvegarde du plan)',
   loading: 'Préparation du plan', plan: 'Ton plan', commit: 'Engagement', celebrate: 'Célébration', benefits: 'Bénéfices', trophy: 'Trophée', paywall: 'Paywall',
 };
-const OFFERS = { annual: 'Annuel', monthly: 'Mensuel', lifetime: 'À vie', rescue: 'Rattrapage (annuel réduit)' };
+const OFFERS = { annual: 'Annuel', monthly: 'Mensuel', rescue: 'Rattrapage (annuel réduit)' };
 const pct = (a, b) => (b ? (100 * a / b).toFixed(b >= 100 ? 0 : 1).replace('.', ',') + ' %' : '—');
 let lastData = null;
 let fnPeriod = cfg.get('fnPeriod', 'd30');
 
 function renderFunnel(d) {
   const all = d.funnel;
-  if (!all) { $('fnTiles').innerHTML = '<div class="note">L’entonnoir n’est pas encore disponible : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'; $('fnPaywall').innerHTML = ''; $('fnSteps').innerHTML = ''; $('tbOffers').innerHTML = ''; return; }
+  if (!all) { $('fnTiles').innerHTML = '<div class="note">L’entonnoir n’est pas encore disponible : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'; $('fnPaywall').innerHTML = ''; $('fnSteps').innerHTML = ''; $('tbOffers').innerHTML = ''; $('tbFails').innerHTML = ''; return; }
   const f = all[fnPeriod];
   document.querySelectorAll('#fnPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.d === fnPeriod)));
   const st = f.started;
@@ -397,6 +399,23 @@ function renderFunnel(d) {
     tile('Ont appuyé sur « acheter »', int(f.buy_taps), 'Dont ' + int(f.buy_taps - f.purchases) + ' ont annulé la fenêtre de paiement Apple.');
   $('tbOffers').innerHTML = '<tr><th>Offre</th><th class="n">Appuis sur « acheter »</th><th class="n">Achats ou essais</th><th class="n">Réussite</th></tr>' +
     Object.entries(OFFERS).map(([k, l]) => { const o = f.by_offer[k] || { taps: 0, purchases: 0 }; return `<tr><td>${l}</td><td class="n">${int(o.taps)}</td><td class="n">${int(o.purchases)}</td><td class="n">${pct(o.purchases, o.taps)}</td></tr>`; }).join('');
+  // Achats pas aboutis, par raison (mesuré à partir de la version 1.0.5 de l'appli)
+  const FAIL_LABELS = {
+    cancelled: ['A fermé la fenêtre de paiement Apple', 'Hésitation au moment de payer, ou pas de carte sur le compte Apple.'],
+    pending: ['Attend l’accord d’un parent', 'Compte mineur avec contrôle parental (« Demander l’autorisation »).'],
+    payment: ['Moyen de paiement refusé', 'Carte expirée ou absente du compte Apple.'],
+    not_allowed: ['Achats bloqués sur l’iPhone', 'Restrictions de Temps d’écran.'],
+    network: ['Problème de connexion', ''],
+    store: ['Problème chez Apple', 'Souvent passager.'],
+    unavailable: ['Produit indisponible', 'À vérifier dans App Store Connect.'],
+    ineligible: ['Pas éligible à l’offre', 'Essai déjà utilisé sur ce compte Apple.'],
+  };
+  const fails = Object.entries(f.fails || {}).sort((a, b) => b[1] - a[1]);
+  const failTotal = fails.reduce((t, [, n]) => t + n, 0);
+  $('tbFails').innerHTML = fails.length
+    ? '<tr><th>Raison</th><th class="n">Personnes</th><th class="n">Part</th><th>Ce que ça veut dire</th></tr>' +
+      fails.map(([k, n]) => { const [l, h] = FAIL_LABELS[k] || (k.startsWith('other') ? ['Autre erreur (' + k.replace('other-', 'code ') + ')', ''] : [k, '']); return `<tr><td>${esc(l)}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td><td class="sub">${esc(h)}</td></tr>`; }).join('')
+    : '<tr><td class="sub">Pas encore de données : la raison des achats ratés est mesurée à partir de la version 1.0.5 de l’appli.</td></tr>';
   // Question par question
   const steps = f.steps.filter((x) => x.idx < 999);
   if (!st || !steps.length) { $('fnSteps').innerHTML = '<div class="sub" style="grid-column:1/-1">Pas encore de données sur cette période. Elles arrivent avec la version 1.0.2 de l’appli.</div>'; return; }
