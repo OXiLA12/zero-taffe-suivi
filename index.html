@@ -298,7 +298,7 @@ function renderResume() {
 
   // Parcours : chaque personne comptée une fois, le jour où elle atteint l'étape.
   const stages = [
-    ['user', 'Ouvert l’appli'], ['quiz', 'Quiz commencé'], ['paywall', 'Paywall vu'],
+    ['quiz', 'Quiz commencé'], ['paywall', 'Paywall vu'],
     ['tap', 'Appui « Essayer »'], ['start', 'Essai gratuit pris'], ['paid', 'A payé'],
   ].map(([k, l]) => ({ k, l, n: total(k).n }));
   const top = Math.max(1, stages[0].n);
@@ -307,7 +307,7 @@ function renderResume() {
   $('pathTitle').textContent = 'Parcours ' + p;
   $('path').innerHTML = '<div class="head">Étape</div><div class="head"></div><div class="head" style="text-align:right">Pers.</div><div class="head" style="text-align:right">Passage</div>' +
     stages.map((s, i) => `<div${i === worst ? ' class="worst"' : ''} style="display:contents"><div class="lab" title="${esc(s.l)}">${esc(s.l)}</div><div class="track"><i style="width:${Math.max(0.5, (100 * s.n) / top)}%"></i></div><div class="num">${int(s.n)}</div><div class="rate">${i ? pct(s.n, stages[i - 1].n) : ''}</div></div>`).join('');
-  const acq = ad + cr, starts = stages[4].n, paid = stages[5].n;
+  const acq = ad + cr, starts = stages[3].n, paid = stages[4].n;
   $('pathNote').innerHTML = (worst > 0 ? `En orange : la plus grosse perte (${esc(stages[worst - 1].l.toLowerCase())} → ${esc(stages[worst].l.toLowerCase())}). ` : '') +
     (acq ? `Pubs et créateurs : <b>${starts ? eur(acq / starts) : '—'}</b> par essai, <b>${paid ? eur(acq / paid) : '—'}</b> par payant.` : '');
 
@@ -316,11 +316,11 @@ function renderResume() {
   const first = D.facts.reduce((m, f) => (f[0] < m ? f[0] : m), to);
   const rows = [];
   for (let d = to; d >= (from > first ? from : first); d = shiftDay(d, -1)) {
-    const r = [d].concat(['spend', 'user', 'quiz', 'paywall', 'start', 'paid', 'money'].map((k) => (k === 'spend' || k === 'money' ? total(k, () => true, [d, d]).eur : total(k, () => true, [d, d]).n)));
+    const r = [d].concat(['spend', 'quiz', 'paywall', 'tap', 'start', 'paid', 'money'].map((k) => (k === 'spend' || k === 'money' ? total(k, () => true, [d, d]).eur : total(k, () => true, [d, d]).n)));
     rows.push(r);
     if (rows.length >= 120) break;
   }
-  const cols = ['Jour', 'Dépensé', 'Ouvert l’appli', 'Quiz', 'Paywall', 'Essais', 'Payants', 'Rapporté'];
+  const cols = ['Jour', 'Dépensé', 'Quiz', 'Paywall', 'Appuis', 'Essais', 'Payants', 'Rapporté'];
   const sum = (i) => rows.reduce((t, r) => t + r[i], 0);
   $('days').innerHTML = `<tr>${cols.map((c, i) => `<th${i ? ' class="n"' : ''}>${c}</th>`).join('')}</tr>` +
     rows.map((r) => `<tr><td>${dayLabel(r[0])}</td><td class="n">${r[1] ? eur(r[1]) : '—'}</td>${r.slice(2, 7).map((v) => `<td class="n">${v ? int(v) : '·'}</td>`).join('')}<td class="n">${r[7] ? eur(r[7]) : '—'}</td></tr>`).join('') +
@@ -439,7 +439,7 @@ function renderAdmin() {
   $('misc').innerHTML =
     tile('Contacts e-mail', int(D.emails.subscribed), `${int(D.emails.without_purchase)} pas encore abonnés (à relancer).`) +
     tile('Coach IA (30 jours)', int(D.coach.messages_30d) + ' msg', `Coût estimé ${eur(D.coach.cost_30d_eur)}.`) +
-    tile('Comptes retirés des chiffres', int(st.excluded), 'Vérificateurs d’Apple et tes tests.');
+    tile('Comptes retirés des chiffres', int(st.excluded + (st.empty_accounts || 0)), `Vérificateurs d’Apple et tes tests${st.empty_accounts ? `, et ${int(st.empty_accounts)} comptes créés en double par erreur (corrigé dans la 1.0.6)` : ''}.`);
   $('how').innerHTML = '<b>Comment sont calculés les chiffres</b><br>• Tout le tableau de bord part des mêmes données : la période choisie en haut s’applique au Résumé et aux Sources, donc leurs totaux sont identiques.<br>• Chaque personne est comptée une fois par étape, le jour où elle l’atteint (heure de Paris).<br>• « Rapporté » = ce qu’Apple te verse (après sa part et la TVA), reçu automatiquement de RevenueCat. Les achats de test ne comptent pas.<br>• L’objectif compte ce que les abonnés payants rapportent par mois (un annuel compte pour 1/12).' +
     (st.errors && st.errors.length ? `<br><span class="err">Données manquantes : ${esc(st.errors.join(', '))}.</span>` : '');
 }
