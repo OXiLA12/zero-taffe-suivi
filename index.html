@@ -425,6 +425,8 @@ function renderFunnel(d) {
     ? '<tr><th>Raison</th><th class="n">Personnes</th><th class="n">Part</th><th>Ce que ça veut dire</th></tr>' +
       fails.map(([k, n]) => { const [l, h] = FAIL_LABELS[k] || (k.startsWith('other') ? ['Autre erreur (' + k.replace('other-', 'code ') + ')', ''] : [k, '']); return `<tr><td>${esc(l)}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td><td class="sub">${esc(h)}</td></tr>`; }).join('')
     : '<tr><td class="sub">Pas encore de données : la raison des achats ratés est mesurée à partir de la version 1.0.5 de l’appli.</td></tr>';
+  // Écran « ce qu'Apple va te demander » (1.0.6) : combien le voient et combien continuent vers Apple.
+  if (f.sheet_info) $('tbFails').innerHTML += `<tr><td>Écran « ce qu’Apple va te demander » vu</td><td class="n">${int(f.sheet_info)}</td><td class="n"></td><td class="sub">Depuis la 1.0.6, juste avant la fenêtre Apple.</td></tr><tr><td>→ ont continué vers Apple</td><td class="n">${int(f.sheet_go || 0)}</td><td class="n">${pct(f.sheet_go || 0, f.sheet_info)}</td><td class="sub">Les autres ont fait « Retour ».</td></tr>`;
   // Question par question
   const steps = f.steps.filter((x) => x.idx < 999);
   if (!st || !steps.length) { $('fnSteps').innerHTML = '<div class="sub" style="grid-column:1/-1">Pas encore de données sur cette période. Elles arrivent avec la version 1.0.2 de l’appli.</div>'; return; }
