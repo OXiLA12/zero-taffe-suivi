@@ -6,13 +6,13 @@
 <meta name="robots" content="noindex, nofollow" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="ZT Suivi" />
-<title>Zéro Taffe — Tableau de bord</title>
+<title>Zéro Taffe — Suivi</title>
 <style>
   :root {
     color-scheme: light;
     --bg: #f6f5f2; --surface: #fcfcfb; --border: #e3e1db;
     --text: #0b0b0b; --text-2: #52514e; --muted: #8a8882;
-    --s1: #2a78d6; --s2: #eb6834; --grid: #ebe9e4;
+    --bar: #2a78d6; --bar-bad: #eb6834; --track: #ebe9e4;
     --good: #0f7a3d; --bad: #c43a3a;
   }
   @media (prefers-color-scheme: dark) {
@@ -20,73 +20,71 @@
       color-scheme: dark;
       --bg: #121211; --surface: #1a1a19; --border: #2e2d2b;
       --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8d86;
-      --s1: #3987e5; --s2: #d95926; --grid: #2a2927;
+      --bar: #3987e5; --bar-bad: #d95926; --track: #2a2927;
       --good: #4cc27c; --bad: #ef7b7b;
     }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 24px; margin: 0; }
-  h2 { font-size: 17px; margin: 32px 0 12px; }
+  main { max-width: 960px; margin: 0 auto; padding: 16px 16px 64px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 16px; margin: 28px 0 10px; }
   .sub { color: var(--text-2); font-size: 13px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
-  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .muted { color: var(--muted); }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tiles { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
+  .tiles.four { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 640px) { .tiles, .tiles.four { grid-template-columns: repeat(2, 1fr); } .tiles .wide { grid-column: span 2; } }
   .k-label { font-size: 13px; color: var(--text-2); }
-  .k-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .k-val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0; font-variant-numeric: tabular-nums; }
   .k-help { font-size: 12px; color: var(--muted); }
   .pos { color: var(--good); } .neg { color: var(--bad); }
-  .hero { grid-column: span 2; }
-  @media (max-width: 480px) { .hero { grid-column: span 1; } }
-  .note { background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; color: var(--text-2); font-size: 13px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
   th { color: var(--text-2); font-weight: 600; font-size: 12px; }
-  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-  input, button { font: inherit; }
-  input { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.total td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: 0; }
+  tr.child td { font-size: 13px; color: var(--text-2); }
+  tr.child td:first-child { padding-left: 20px; }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .scroll table { min-width: 600px; }
+  input, button, select { font: inherit; }
+  input, select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-width: 0; }
   button { background: var(--text); color: var(--surface); border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
   button.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+  button.link { background: none; color: var(--text-2); padding: 0; text-decoration: underline; border: 0; font-size: 13px; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .chart { position: relative; }
-  .chart svg { width: 100%; height: auto; display: block; }
-  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
-  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-  .tip { position: absolute; pointer-events: none; background: var(--text); color: var(--surface); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .1s; }
-  details summary { cursor: pointer; color: var(--text-2); font-size: 13px; margin-top: 8px; }
-  #login { max-width: 520px; margin: 80px auto; }
-  nav.tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; gap: 4px; overflow-x: auto; margin: 18px -16px 0; padding: 8px 16px; border-bottom: 1px solid var(--border); scrollbar-width: none; }
-  nav.tabs::-webkit-scrollbar { display: none; }
-  nav.tabs button { background: transparent; color: var(--text-2); border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; white-space: nowrap; font-weight: 600; font-size: 14px; }
-  nav.tabs button[aria-selected="true"] { background: var(--text); color: var(--surface); }
-  nav.tabs button:hover:not([aria-selected="true"]) { border-color: var(--border); }
-  .tab[hidden] { display: none; }
-  .tab > h2:first-child { margin-top: 20px; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
-  .seg button { background: transparent; color: var(--text-2); border-radius: 0; padding: 6px 12px; font-size: 13px; }
-  .seg button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
-  .fn { display: grid; grid-template-columns: minmax(120px, 230px) 1fr 62px 70px; gap: 6px 10px; align-items: center; font-size: 13px; }
-  .fn .lab { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .fn .bar { height: 14px; background: var(--grid); border-radius: 4px; overflow: hidden; }
-  .fn .bar i { display: block; height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; }
-  .fn .worst .bar i { background: var(--s2); }
-  .fn .pct, .fn .drop { text-align: right; font-variant-numeric: tabular-nums; }
-  .fn .drop { color: var(--muted); }
-  .fn .worst .drop { color: var(--bad); font-weight: 700; }
-  .fn .head { color: var(--text-2); font-size: 12px; font-weight: 600; }
-  @media (max-width: 560px) { .fn { grid-template-columns: minmax(90px, 1fr) 1fr 48px 56px; } }
+  .note { border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; color: var(--text-2); font-size: 13px; }
   .err { color: var(--bad); font-size: 13px; }
-  .scroll { overflow-x: auto; }
-  .scroll table { min-width: 860px; }
-  tr.sub td { font-size: 13px; color: var(--text-2); }
-  tr.sub td:first-child { padding-left: 22px; }
-  tr.total td { font-weight: 700; border-top: 2px solid var(--border); }
+  details summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 4px 0; }
+  details[open] summary { margin-bottom: 8px; }
+  #login { max-width: 520px; margin: 80px auto; }
+  .bar-sticky { position: sticky; top: 0; z-index: 5; background: var(--bg); margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+  .seg { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { background: transparent; color: var(--text-2); border: 1px solid transparent; border-radius: 999px; padding: 6px 12px; white-space: nowrap; font-weight: 600; font-size: 14px; }
+  .seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--text); color: var(--surface); }
+  .seg.small button { font-size: 13px; padding: 4px 10px; border-color: var(--border); }
+  .tab[hidden], .seg[hidden] { display: none; }
+  /* Objectif */
+  .goal-track { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; margin: 10px 0 6px; }
+  .goal-track i { display: block; height: 100%; background: var(--good); border-radius: 6px; min-width: 2px; }
+  /* Parcours */
+  .fn { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 54px 64px; gap: 8px 10px; align-items: center; font-size: 14px; }
+  .fn .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fn .track { height: 14px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .fn .track i { display: block; height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; }
+  .fn .worst .track i { background: var(--bar-bad); }
+  .fn .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .fn .rate { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .fn .worst .rate { color: var(--bad); font-weight: 700; }
+  .fn .head { color: var(--text-2); font-size: 12px; font-weight: 600; }
+  @media (max-width: 520px) { .fn { grid-template-columns: minmax(96px, 1fr) 1fr 40px 52px; font-size: 13px; } }
   .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--border); color: var(--text-2); }
   .pill.good { color: var(--good); border-color: currentColor; }
   .pill.bad { color: var(--bad); border-color: currentColor; }
-  .pill.warn { color: var(--s2); border-color: currentColor; }
-  select { font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .pill.warn { color: var(--bar-bad); border-color: currentColor; }
 </style>
 </head>
 <body>
@@ -104,768 +102,415 @@
   <div id="app" hidden>
     <header>
       <div>
-        <h1>Zéro Taffe — Tableau de bord</h1>
+        <h1>Zéro Taffe</h1>
         <div class="sub" id="updated"></div>
       </div>
-      <div class="row">
-        <button class="ghost" id="refresh">Actualiser</button>
-        <button class="ghost" id="logout">Changer de clé</button>
-      </div>
+      <button class="ghost" id="refresh">Actualiser</button>
     </header>
 
-    <nav class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="overview">Vue d’ensemble</button>
-      <button role="tab" data-tab="sources">Sources</button>
-      <button role="tab" data-tab="subscribers">Abonnés</button>
-      <button role="tab" data-tab="creators">Créateurs</button>
-      <button role="tab" data-tab="funnel">Entonnoir</button>
-      <button role="tab" data-tab="ads">Pubs</button>
-      <button role="tab" data-tab="money">Revenus</button>
-      <button role="tab" data-tab="users">Utilisateurs et e-mails</button>
-      <button role="tab" data-tab="coach">Coach IA</button>
-      <button role="tab" data-tab="expenses">Dépenses</button>
-    </nav>
+    <div class="bar-sticky">
+      <nav class="seg" role="tablist" id="tabs">
+        <button role="tab" data-tab="resume">Résumé</button>
+        <button role="tab" data-tab="subs">Abonnés</button>
+        <button role="tab" data-tab="sources">Sources et créateurs</button>
+        <button role="tab" data-tab="admin">Gestion</button>
+      </nav>
+      <div class="seg small" id="period" aria-label="Période">
+        <button data-p="today">Aujourd’hui</button>
+        <button data-p="7">7 jours</button>
+        <button data-p="30">30 jours</button>
+        <button data-p="month">Ce mois-ci</button>
+        <button data-p="all">Depuis le début</button>
+      </div>
+    </div>
 
-    <section class="tab" id="tab-overview">
-      <h2>Ce mois-ci</h2>
-      <div class="grid" id="month"></div>
-      <h2>Les chiffres qui comptent (30 derniers jours)</h2>
-      <div class="grid" id="keyStats"></div>
+    <!-- ===================== RÉSUMÉ ===================== -->
+    <section class="tab" id="tab-resume">
+      <h2>Objectif</h2>
+      <div class="card" id="goal"></div>
+
+      <h2 id="moneyTitle">Argent</h2>
+      <div class="tiles" id="money"></div>
+
+      <h2 id="pathTitle">Parcours</h2>
+      <div class="card">
+        <div class="fn" id="path"></div>
+        <p class="sub" id="pathNote" style="margin-bottom:0"></p>
+      </div>
+
+      <h2>Jour par jour</h2>
+      <div class="card scroll"><table id="days"></table></div>
+
+      <h2>Pour aller plus loin</h2>
+      <div class="card">
+        <details id="payDetail"><summary>Le moment de payer</summary><div id="pay"></div></details>
+        <details><summary>Question par question (quiz)</summary><div class="fn" id="steps"></div></details>
+      </div>
     </section>
 
+    <!-- ===================== ABONNÉS ===================== -->
+    <section class="tab" id="tab-subs">
+      <h2>En ce moment</h2>
+      <div class="tiles four" id="subTiles"></div>
+      <h2>Tous les abonnements</h2>
+      <div class="card scroll"><table id="subList"></table></div>
+      <p class="sub">Prénom donné dans le quiz, e-mail seulement s’il a été donné avec accord. Tes tests et les vérificateurs d’Apple ne sont pas comptés. « Te revient » = après la part d’Apple et la TVA.</p>
+    </section>
+
+    <!-- ===================== SOURCES ET CRÉATEURS ===================== -->
     <section class="tab" id="tab-sources">
-      <h2>D’où viennent tes clients, et ce que chaque source te rapporte</h2>
-      <div class="row" style="justify-content:space-between;margin-bottom:12px">
-        <p class="sub" style="margin:0">Personnes qui ont répondu « comment tu as connu Zéro Taffe ? » sur la période, et tout ce qu’elles ont payé depuis.</p>
-        <div class="seg" id="srcPeriod"><button data-p="cur">Ce mois-ci</button><button data-p="prev">Mois dernier</button><button data-p="3m">3 mois</button><button data-p="all">Depuis le début</button></div>
+      <h2 id="srcTitle">D’où viennent les gens</h2>
+      <div class="card scroll"><table id="srcTable"></table></div>
+      <p class="sub">Source = réponse à « Comment tu as connu Zéro Taffe ? » dans le quiz. La ligne Total est la même que dans le Résumé.</p>
+
+      <h2>Créateurs <span class="sub">(depuis le début)</span></h2>
+      <div class="card scroll"><table id="crTable"></table></div>
+      <p class="sub">« Dû » = fixe + commission par abonné payant + bonus des paliers atteints. « Déjà payé » = tes dépenses dont le libellé contient le code (ex. « Vidéo DAIKI »).</p>
+      <div class="card" style="margin-top:10px">
+        <details id="crForm"><summary>Ajouter ou modifier un créateur</summary>
+          <div class="row">
+            <input id="crCode" placeholder="Code (ex. CLEM)" maxlength="20" style="width:130px;text-transform:uppercase" />
+            <input id="crHandle" placeholder="Compte TikTok" maxlength="40" style="width:150px" />
+            <input id="crFixed" type="number" min="0" step="1" placeholder="Fixe €" style="width:90px" />
+            <input id="crPer" type="number" min="0" step="0.5" placeholder="€ / payant" style="width:100px" />
+            <input id="crTiers" placeholder="Paliers (ex. 10:50, 25:150)" style="flex:1;min-width:170px" />
+            <select id="crStatus" aria-label="Statut"><option value="contacté">Contacté</option><option value="accord" selected>Accord</option><option value="posté">A posté</option><option value="terminé">Terminé</option></select>
+            <button id="crSave">Enregistrer</button>
+          </div>
+          <p id="crErr" class="err"></p>
+          <p class="sub" style="margin-bottom:0">Crée d’abord le code dans App Store Connect (Abonnements › Codes d’offre), puis ajoute-le ici avec le même nom. Pour modifier : clique sur le code dans le tableau.</p>
+        </details>
       </div>
-      <div id="srcStatus"></div>
-      <div class="grid" id="srcTiles"></div>
-      <h2>Source par source</h2>
-      <div class="card scroll"><table id="tbSources"></table></div>
-      <p class="sub">« Rapporté » = ce qui te revient (après Apple et taxes). « Retour » = rapporté ÷ dépensé : au-dessus de 1 ×, la source est rentable. Les essais en cours peuvent encore payer : attends 4 jours après une dépense avant de juger.</p>
-      <h2>Dépensé et rapporté, par source</h2>
-      <div class="card">
-        <div class="legend"><span><i class="sw" style="background:var(--s2)"></i>Dépensé</span><span><i class="sw" style="background:var(--s1)"></i>Rapporté</span></div>
-        <div class="chart" id="chSources"></div>
-      </div>
-      <p class="sub">Les codes promo des créateurs et ce que tu leur dois sont dans l’onglet <b>Créateurs</b>.</p>
-      <div class="note" style="margin-top:12px"><b>Comment ça marche</b><br>• La source vient de la question du quiz (version 1.0.3 de l’appli). Sur TikTok, Instagram, YouTube et Snapchat, la personne précise : pub, créateur ou compte Zéro Taffe.<br>• Les paiements arrivent tout seuls de RevenueCat, même les renouvellements des mois suivants.<br>• Dépenses : TikTok Ads est lu automatiquement. Le reste (influenceurs, ChatGPT, Apple Ads…) se saisit dans l’onglet Dépenses en choisissant sa source.<br>• Repère : un client payant te rapporte environ 28 € la 1re année. Si une source coûte plus de 28 € par payant, elle perd de l’argent.</div>
     </section>
 
-    <section class="tab" id="tab-creators">
-      <h2>Tes créateurs partenaires</h2>
-      <div id="crStatus"></div>
-      <div class="grid" id="crTiles"></div>
-      <h2>Créateur par créateur</h2>
-      <div class="card scroll"><table id="tbCreators"></table></div>
-      <p class="sub">Clique sur un code pour voir tout le détail (mois par mois, annulations, remboursements…). « Payé par les clients » = prix TTC payé. « Rapporté » = ce qui te revient (après Apple et TVA), tout ce que les personnes venues avec le code ont payé depuis. « Retour » = rapporté ÷ dû : au-dessus de 1 ×, le créateur te fait gagner de l’argent. « Dû » = fixe + commission par abonné payant + bonus des paliers atteints. « Déjà payé » = tes dépenses (onglet Dépenses) dont le libellé contient le code, ex. « Paiement DAIKI ».</p>
-      <h2>Commissions à payer, mois par mois</h2>
-      <div class="card scroll"><table id="tbCrMonths"></table></div>
-      <p class="sub">Un abonné compte dans le mois de son <b>1er vrai paiement</b> (après les 7 jours gratuits). Paie la commission d’un mois vers le 10 du mois suivant : Apple te verse l’argent avec environ un mois de décalage, et un remboursement éventuel aura eu le temps d’arriver.</p>
-      <h2>Ajouter ou modifier un créateur</h2>
+    <!-- ===================== GESTION ===================== -->
+    <section class="tab" id="tab-admin">
+      <h2>Ajouter une dépense</h2>
       <div class="card">
         <div class="row">
-          <input id="crCode" placeholder="Code (ex. CLEM)" maxlength="20" style="width:130px;text-transform:uppercase" />
-          <input id="crHandle" placeholder="Compte TikTok" maxlength="40" style="width:160px" />
-          <input id="crFixed" type="number" min="0" step="1" placeholder="Fixe €" style="width:100px" />
-          <input id="crPer" type="number" min="0" step="0.5" placeholder="€ / payant" style="width:110px" />
-          <input id="crTiers" placeholder="Paliers (ex. 10:50, 25:150)" style="flex:1;min-width:180px" />
-          <select id="crStatusSel" aria-label="Statut"><option value="contacté">Contacté</option><option value="accord" selected>Accord</option><option value="posté">A posté</option><option value="terminé">Terminé</option></select>
-          <button id="crAdd">Enregistrer</button>
-        </div>
-        <p id="crErr" class="err"></p>
-        <p class="sub" style="margin-bottom:0">Crée d’abord le code dans App Store Connect (Abonnements › Codes d’offre › code personnalisé), puis ajoute-le ici avec le même nom. Pour modifier un créateur, clique sur « Modifier » dans le tableau, change les cases, puis « Enregistrer ».</p>
-      </div>
-    </section>
-
-    <section class="tab" id="tab-subscribers">
-      <h2>Tes abonnés</h2>
-      <div class="grid" id="subTiles"></div>
-      <h2>Abonné par abonné</h2>
-      <div class="card scroll"><table id="tbSubs"></table></div>
-      <p class="sub">L’appli n’a pas de compte : tu vois le prénom donné dans le quiz (envoyé avec l’abonnement à partir de la version 1.0.5, ou laissé avec l’e-mail) et l’e-mail seulement si la personne l’a donné avec son accord. Les achats des vérificateurs d’Apple et tes tests ne sont pas comptés. Les montants sont ce que la personne a payé (prix TTC) ; « Te revient » = après Apple et TVA.</p>
-    </section>
-
-    <section class="tab" id="tab-funnel">
-      <h2>Du premier écran à l’abonnement</h2>
-      <div class="row" style="justify-content:space-between;margin-bottom:12px">
-        <p class="sub" style="margin:0">Personnes qui ont <b>commencé le quiz</b> sur la période, et jusqu’où elles sont allées. Aucune réponse n’est enregistrée, seulement l’écran atteint.</p>
-        <div class="seg" id="fnPeriod"><button data-d="d7">7 jours</button><button data-d="d30">30 jours</button><button data-d="d90">90 jours</button></div>
-      </div>
-      <div class="grid" id="fnTiles"></div>
-      <h2>Le paywall</h2>
-      <div class="grid" id="fnPaywall"></div>
-      <div class="card" style="margin-top:12px"><table id="tbOffers"></table></div>
-      <h2>Pourquoi l’achat n’aboutit pas</h2>
-      <div class="card scroll"><table id="tbFails"></table></div>
-      <h2>Question par question</h2>
-      <div class="card">
-        <p class="sub" style="margin-top:0">Barre = part des personnes encore là à cet écran. « Perte » = part perdue depuis l’écran précédent. En orange : l’écran où l’on perd le plus de monde.</p>
-        <div class="fn" id="fnSteps"></div>
-      </div>
-    </section>
-
-    <section class="tab" id="tab-ads">
-      <h2>Pubs et acquisition (ce mois-ci)</h2>
-      <div class="grid" id="acq"></div>
-    </section>
-
-    <section class="tab" id="tab-money">
-      <h2>Revenus et dépenses, mois par mois</h2>
-      <div class="card">
-        <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Ce qui te revient (après Apple et taxes)</span><span><i class="sw" style="background:var(--s2)"></i>Dépenses (IA + saisies)</span></div>
-        <div class="chart" id="chMoney"></div>
-        <details><summary>Voir le tableau</summary><table id="tbMoney"></table></details>
-      </div>
-      <h2>Abonnés</h2>
-      <div class="grid" id="subs"></div>
-      <h2>Hypothèse pour la LTV</h2>
-      <div class="card">
-        <div class="row">
-          <label for="renew" class="sub">Part des abonnés qui renouvellent la 2e année (%)</label>
-          <input id="renew" type="number" min="0" max="100" step="5" style="width:90px" />
-          <button class="ghost" id="renewSave">Enregistrer</button>
-        </div>
-        <p class="sub" style="margin-bottom:0">Par défaut 25 % : une appli d'arrêt perd ses clients quand ils réussissent. Remplace par ton vrai chiffre dès la 1re vague de renouvellements (RevenueCat).</p>
-      </div>
-    </section>
-
-    <section class="tab" id="tab-users">
-      <h2>Utilisateurs</h2>
-      <div class="grid" id="users"></div>
-      <div class="card" style="margin-top:12px">
-        <div class="k-label">Nouveaux utilisateurs par jour (30 derniers jours)</div>
-        <div class="chart" id="chUsers"></div>
-      </div>
-      <h2>E-mails</h2>
-      <div class="grid" id="emails"></div>
-    </section>
-
-    <section class="tab" id="tab-coach">
-      <h2>Coach IA</h2>
-      <div class="grid" id="coach"></div>
-      <div class="card" style="margin-top:12px">
-        <div class="k-label">Messages au coach par jour (30 derniers jours)</div>
-        <div class="chart" id="chCoach"></div>
-      </div>
-      <h2>Anti-spam</h2>
-      <div class="grid" id="spam"></div>
-      <div class="card" style="margin-top:12px">
-        <div class="k-label">Les plus gros utilisateurs du coach (24 h)</div>
-        <table id="tbTop"></table>
-      </div>
-    </section>
-
-    <section class="tab" id="tab-expenses">
-      <h2>Tes dépenses saisies à la main</h2>
-      <div class="card">
-        <p class="sub" style="margin-top:0">Pubs Meta, influenceurs, compte Apple Developer, Supabase, domaine… Le coût de l’IA et les pubs TikTok (une fois reliées) sont calculés tout seuls.</p>
-        <div class="row">
-          <input id="exMonth" type="month" />
-          <input id="exLabel" placeholder="Ex. Influenceur @prenom" maxlength="80" style="flex:1;min-width:160px" />
-          <select id="exSource" aria-label="Source de la dépense"></select>
-          <input id="exAmount" type="number" min="0" step="0.01" placeholder="Montant €" style="width:130px" />
+          <input id="exDate" type="date" />
+          <input id="exLabel" placeholder="Ex. Vidéo DAIKI" maxlength="80" style="flex:1;min-width:150px" />
+          <select id="exSource" aria-label="Type de dépense"></select>
+          <input id="exAmount" type="number" min="0" step="0.01" placeholder="€" style="width:100px" />
           <button id="exAdd">Ajouter</button>
         </div>
         <p id="exErr" class="err"></p>
-        <table id="tbEx"></table>
+        <p class="sub" style="margin-bottom:0" id="adNote"></p>
       </div>
-    </section>
+      <h2>Tes dépenses saisies</h2>
+      <div class="card scroll"><table id="exTable"></table></div>
 
-    <div class="note" id="notes" style="margin-top:24px"></div>
+      <h2>Autres infos</h2>
+      <div class="tiles" id="misc"></div>
+      <div class="note" style="margin-top:16px" id="how"></div>
+    </section>
   </div>
 </main>
 
 <script>
 const URL_STATS = 'https://eigawgcqkvgmptcysktb.supabase.co/functions/v1/admin-stats';
-const store = {
-  get: () => { try { return localStorage.getItem('zt-admin-key') || ''; } catch { return ''; } },
-  set: (v) => { try { localStorage.setItem('zt-admin-key', v); } catch {} },
-  del: () => { try { localStorage.removeItem('zt-admin-key'); } catch {} },
+const GOAL = 3000; // objectif : ce qui te revient chaque mois, en euros
+const ls = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch {} },
 };
-let KEY = store.get();
+let KEY = ls.get('zt-admin-key', '');
+let D = null; // dernières données reçues
+let period = ls.get('zt-period', '7');
 const $ = (id) => document.getElementById(id);
-// Réglages du tableau de bord (gardés dans ce navigateur)
-const cfg = {
-  get: (k, def) => { try { const v = localStorage.getItem('zt-cfg-' + k); return v == null ? def : v; } catch { return def; } },
-  set: (k, v) => { try { localStorage.setItem('zt-cfg-' + k, v); } catch {} },
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const int = (n) => Number(n || 0).toLocaleString('fr-FR');
+const eur = (n) => { const v = Number(n || 0); return v.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2, minimumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 }); };
+const pct = (a, b) => (b ? Math.round((100 * a) / b) + ' %' : '—');
+const dayLabel = (d, opts = { weekday: 'short', day: 'numeric', month: 'short' }) => new Date(d + 'T12:00:00Z').toLocaleDateString('fr-FR', { ...opts, timeZone: 'UTC' });
+const shiftDay = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const tile = (label, value, help = '', cls = '', extra = '') => `<div class="card ${extra}"><div class="k-label">${esc(label)}</div><div class="k-val ${cls}">${value}</div><div class="k-help">${help}</div></div>`;
+
+// ---------- Libellés ----------
+const SRC = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', snapchat: 'Snapchat', chatgpt: 'ChatGPT / IA', appstore: 'App Store', friend: 'Bouche-à-oreille', other: 'Autre', unknown: 'Pas répondu' };
+const KIND = { ad: 'Pub', creator: 'Créateurs', zt: 'Ton compte (gratuit)', unsure: 'Ne sait plus' };
+const srcLabel = (key) => { const [p, k] = String(key || 'unknown').split(':'); return (SRC[p] || p) + (k ? ' · ' + (KIND[k] || k) : ''); };
+const EXPENSE_TYPES = [
+  ['', 'Autre frais (outil, abonnement…)'],
+  ['tiktok:creator', 'Créateur TikTok'], ['instagram:creator', 'Créateur Instagram'], ['youtube:creator', 'Créateur YouTube'], ['snapchat:creator', 'Créateur Snapchat'],
+  ['tiktok:ad', 'Pub TikTok'], ['instagram:ad', 'Pub Instagram / Meta'], ['snapchat:ad', 'Pub Snapchat'], ['chatgpt:ad', 'Pub ChatGPT'], ['appstore:ad', 'Apple Ads'],
+];
+const PLAN = { zt_annual: 'Annuel', zt_monthly: 'Mensuel', zt_annual_rescue: 'Annuel (offre spéciale)', zt_lifetime: 'À vie' };
+const STATUS = {
+  trial: ['Essai en cours', 'warn'], trial_cancelled: ['Essai annulé', 'bad'], active: ['Payant', 'good'], cancelled: ['A résilié', 'warn'],
+  billing: ['Problème de paiement', 'bad'], expired: ['Terminé', ''], refunded: ['Remboursé', 'bad'],
 };
-const eur = (n, d = 0) => (n == null || isNaN(n) ? '—' : Number(n).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: d, minimumFractionDigits: d }));
-const int = (n) => (n == null ? '—' : Number(n).toLocaleString('fr-FR'));
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-const monthLabel = (ym) => MONTHS[Number(ym.slice(5, 7)) - 1] + ' ' + ym.slice(2, 4);
-
-function tile(label, value, help, cls = '', extra = '') {
-  return `<div class="card ${extra}"><div class="k-label">${esc(label)}</div><div class="k-val ${cls}">${value}</div><div class="k-help">${esc(help)}</div></div>`;
-}
-
-async function api(method = 'GET', body, query = '') {
-  const res = await fetch(URL_STATS + query, {
-    method, headers: { 'x-admin-key': KEY, ...(body ? { 'content-type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 401) throw new Error('unauthorized');
-  if (!res.ok) throw new Error('Erreur ' + res.status);
-  return res.json();
-}
-
-// ---------- Graphiques (SVG, une seule échelle, survol avec infobulle) ----------
-function barChart(el, labels, series, fmt) {
-  const W = 760, H = 240, L = 56, R = 8, T = 10, B = 28;
-  const max = Math.max(1, ...series.flatMap((s) => s.values)) * 1.1;
-  const n = labels.length, band = (W - L - R) / n, gap = 2;
-  const bw = Math.min(28, (band * 0.7 - gap * (series.length - 1)) / series.length);
-  const y = (v) => T + (H - T - B) * (1 - v / max);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
-  for (let i = 0; i <= 4; i++) {
-    const v = (max / 4) * i, yy = y(v);
-    svg += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)" />`;
-    svg += `<text x="${L - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`;
-  }
-  labels.forEach((lab, i) => {
-    const cx = L + band * i + band / 2, total = series.length * bw + gap * (series.length - 1);
-    series.forEach((s, j) => {
-      const v = s.values[i], x = cx - total / 2 + j * (bw + gap), yy = y(v), h = Math.max(0, H - B - yy);
-      if (h > 0) svg += `<path d="M${x},${H - B} V${yy + Math.min(4, h)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 V${H - B} Z" fill="${s.color}" />`;
-    });
-    svg += `<rect x="${L + band * i}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent" data-i="${i}" />`;
-    if (n <= 12 || i % Math.ceil(n / 10) === 0) svg += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(lab)}</text>`;
-  });
-  svg += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--border)" /></svg><div class="tip"></div>`;
-  el.innerHTML = svg;
-  hover(el, (i) => `<b>${esc(labels[i])}</b>` + series.map((s) => `<br>${esc(s.name)} : ${fmt(s.values[i], true)}`).join(''));
-}
-
-function lineChart(el, labels, values, name, fmt) {
-  const W = 760, H = 200, L = 40, R = 8, T = 10, B = 28;
-  const max = Math.max(1, ...values) * 1.15, n = labels.length;
-  const x = (i) => L + ((W - L - R) * i) / Math.max(1, n - 1), y = (v) => T + (H - T - B) * (1 - v / max);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
-  for (let i = 0; i <= 3; i++) { const v = (max / 3) * i; svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" /><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`; }
-  svg += `<path d="${values.map((v, i) => (i ? 'L' : 'M') + x(i) + ',' + y(v)).join(' ')}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" />`;
-  svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="3 3" opacity="0" /><circle class="dot" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2" opacity="0" />`;
-  labels.forEach((lab, i) => {
-    svg += `<rect x="${x(i) - (W - L - R) / n / 2}" y="${T}" width="${(W - L - R) / n}" height="${H - T - B}" fill="transparent" data-i="${i}" />`;
-    if (i % 5 === 0 || i === n - 1) svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(lab)}</text>`;
-  });
-  svg += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--border)" /></svg><div class="tip"></div>`;
-  el.innerHTML = svg;
-  const cross = el.querySelector('.cross'), dot = el.querySelector('.dot');
-  hover(el, (i) => { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1); dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(values[i])); dot.setAttribute('opacity', 1); return `<b>${esc(labels[i])}</b><br>${esc(name)} : ${fmt(values[i], true)}`; },
-    () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); });
-}
-
-function hover(el, html, out) {
-  const tip = el.querySelector('.tip');
-  el.querySelectorAll('rect[data-i]').forEach((r) => {
-    r.addEventListener('mousemove', (e) => {
-      tip.innerHTML = html(Number(r.dataset.i));
-      const box = el.getBoundingClientRect();
-      tip.style.left = Math.min(e.clientX - box.left + 12, box.width - tip.offsetWidth - 4) + 'px';
-      tip.style.top = (e.clientY - box.top - 40) + 'px';
-      tip.style.opacity = 1;
-    });
-    r.addEventListener('mouseleave', () => { tip.style.opacity = 0; out && out(); });
-  });
-}
-
-const lastDays = (n) => Array.from({ length: n }, (_, k) => { const d = new Date(Date.now() - (n - 1 - k) * 86400000); return d.toISOString().slice(0, 10); });
-
-
-// Noms lisibles des écrans du quiz (identifiants de src/quiz/steps.ts)
+const FAILS = {
+  cancelled: 'A fermé la fenêtre Apple', pending: 'Attend l’accord d’un parent', payment: 'Moyen de paiement refusé', not_allowed: 'Achats bloqués sur l’iPhone',
+  network: 'Problème de connexion', store: 'Problème chez Apple', unavailable: 'Produit indisponible', ineligible: 'Essai déjà utilisé', other: 'Autre erreur',
+};
 const STEP_LABELS = {
-  intro: 'Accueil', method: 'Explication de la méthode', name: 'Prénom', source: 'Comment tu nous as connus', sourceKind: 'Pub, créateur ou compte ZT', t1: 'Transition 1', product: 'Produit utilisé', age: 'Âge', gender: 'Genre',
-  duration: 'Depuis combien de temps', puffSize: 'Taille de la puff', bottleSize: 'Taille du flacon', cigs: 'Cigarettes par jour', quantity: 'Quantité', spend: 'Dépense',
-  nicotine: 'Taux de nicotine', money: 'Révélation : l’argent', t2: 'Transition 2', firstPuff: 'Première taffe du matin', night: 'La nuit', battery: 'Batterie vide',
-  situations: 'Situations d’envie', sos: 'Présentation du SOS', bothers: 'Ce qui dérange', tried: 'Déjà essayé', cravedBy: 'Ce qui a fait craquer', t3: 'Transition 3',
-  fears: 'Peurs', fear: 'Réponse aux peurs', t4: 'Transition 4', reasons: 'Raisons d’arrêter', reward: 'Récompense', quitMethod: 'Méthode d’arrêt', timeline: 'Délai',
-  partner: 'Avec quelqu’un ?', duo: 'Défi à deux', motivation: 'Motivation /10', notifications: 'Notifications', account: 'E-mail (sauvegarde du plan)',
+  intro: 'Accueil', method: 'La méthode', name: 'Prénom', source: 'Comment tu nous as connus', sourceKind: 'Pub, créateur ou compte', t1: 'Transition 1', product: 'Produit', age: 'Âge', gender: 'Genre',
+  duration: 'Depuis quand', puffSize: 'Taille de la puff', bottleSize: 'Taille du flacon', cigs: 'Cigarettes par jour', quantity: 'Quantité', spend: 'Dépense',
+  nicotine: 'Nicotine', money: 'Révélation argent', t2: 'Transition 2', firstPuff: 'Première taffe', night: 'La nuit', battery: 'Batterie vide',
+  situations: 'Situations d’envie', sos: 'Le SOS', bothers: 'Ce qui dérange', tried: 'Déjà essayé', cravedBy: 'Ce qui a fait craquer', t3: 'Transition 3',
+  fears: 'Peurs', fear: 'Réponse aux peurs', t4: 'Transition 4', reasons: 'Raisons d’arrêter', reward: 'Récompense', quitMethod: 'Méthode', timeline: 'Délai',
+  partner: 'Avec quelqu’un ?', duo: 'Défi à deux', motivation: 'Motivation', notifications: 'Notifications', account: 'E-mail',
   loading: 'Préparation du plan', plan: 'Ton plan', commit: 'Engagement', celebrate: 'Célébration', benefits: 'Bénéfices', trophy: 'Trophée', paywall: 'Paywall',
 };
-const OFFERS = { annual: 'Annuel', monthly: 'Mensuel', rescue: 'Rattrapage (annuel réduit)' };
-const pct = (a, b) => (b ? (100 * a / b).toFixed(b >= 100 ? 0 : 1).replace('.', ',') + ' %' : '—');
-let lastData = null;
-let fnPeriod = cfg.get('fnPeriod', 'd30');
+// Dépenses : pubs, créateurs, ou autres frais (IA, outils…). Seuls pubs et créateurs servent à attirer des clients.
+const spendKind = (s) => (s === 'ai' || s === 'other_cost' ? 'other' : /:creator$/.test(s) ? 'creator' : 'ad');
 
-function renderFunnel(d) {
-  const all = d.funnel;
-  if (!all) { $('fnTiles').innerHTML = '<div class="note">L’entonnoir n’est pas encore disponible : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'; $('fnPaywall').innerHTML = ''; $('fnSteps').innerHTML = ''; $('tbOffers').innerHTML = ''; $('tbFails').innerHTML = ''; return; }
-  const f = all[fnPeriod];
-  document.querySelectorAll('#fnPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.d === fnPeriod)));
-  const st = f.started;
-  const finished = (f.steps.find((x) => x.step === 'paywall') || {}).people || f.paywall;
-  $('fnTiles').innerHTML =
-    tile('Ont commencé le quiz', int(st), 'Personnes arrivées sur le premier écran.', '', 'hero') +
-    tile('Arrivés au paywall', int(f.paywall), pct(f.paywall, st) + ' de ceux qui ont commencé.') +
-    tile('Abonnés ou essais', int(f.purchases), pct(f.purchases, st) + ' de ceux qui ont commencé.', f.purchases ? 'pos' : '') +
-    tile('E-mails récoltés', int(f.emails), pct(f.emails, st) + ' de ceux qui ont commencé.');
-  $('fnPaywall').innerHTML =
-    tile('Taux de conversion du paywall', pct(f.purchases, f.paywall), `${int(f.purchases)} sur ${int(f.paywall)} personnes. Repère : 5 à 15 % pour une appli avec essai.`, f.paywall && f.purchases / f.paywall >= 0.05 ? 'pos' : '', 'hero') +
-    tile('Partis sans rien prendre', int(f.paywall_left), pct(f.paywall_left, f.paywall) + ' des personnes au paywall. Ce sont elles qu’on relance par e-mail.', f.paywall_left ? 'neg' : '') +
-    tile('Ont vu l’offre de rattrapage', int(f.rescue), pct(f.rescue, f.paywall) + ' des personnes au paywall (après « Plus tard »).') +
-    tile('Ont appuyé sur « acheter »', int(f.buy_taps), 'Dont ' + int(f.buy_taps - f.purchases) + ' ont annulé la fenêtre de paiement Apple.');
-  $('tbOffers').innerHTML = '<tr><th>Offre</th><th class="n">Appuis sur « acheter »</th><th class="n">Achats ou essais</th><th class="n">Réussite</th></tr>' +
-    Object.entries(OFFERS).map(([k, l]) => { const o = f.by_offer[k] || { taps: 0, purchases: 0 }; return `<tr><td>${l}</td><td class="n">${int(o.taps)}</td><td class="n">${int(o.purchases)}</td><td class="n">${pct(o.purchases, o.taps)}</td></tr>`; }).join('');
-  // Achats pas aboutis, par raison (mesuré à partir de la version 1.0.5 de l'appli)
-  const FAIL_LABELS = {
-    cancelled: ['A fermé la fenêtre de paiement Apple', 'Hésitation au moment de payer, ou pas de carte sur le compte Apple.'],
-    pending: ['Attend l’accord d’un parent', 'Compte mineur avec contrôle parental (« Demander l’autorisation »).'],
-    payment: ['Moyen de paiement refusé', 'Carte expirée ou absente du compte Apple.'],
-    not_allowed: ['Achats bloqués sur l’iPhone', 'Restrictions de Temps d’écran.'],
-    network: ['Problème de connexion', ''],
-    store: ['Problème chez Apple', 'Souvent passager.'],
-    unavailable: ['Produit indisponible', 'À vérifier dans App Store Connect.'],
-    ineligible: ['Pas éligible à l’offre', 'Essai déjà utilisé sur ce compte Apple.'],
-  };
-  const fails = Object.entries(f.fails || {}).sort((a, b) => b[1] - a[1]);
-  const failTotal = fails.reduce((t, [, n]) => t + n, 0);
-  $('tbFails').innerHTML = fails.length
-    ? '<tr><th>Raison</th><th class="n">Personnes</th><th class="n">Part</th><th>Ce que ça veut dire</th></tr>' +
-      fails.map(([k, n]) => { const [l, h] = FAIL_LABELS[k] || (k.startsWith('other') ? ['Autre erreur (' + k.replace('other-', 'code ') + ')', ''] : [k, '']); return `<tr><td>${esc(l)}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td><td class="sub">${esc(h)}</td></tr>`; }).join('')
-    : '<tr><td class="sub">Pas encore de données : la raison des achats ratés est mesurée à partir de la version 1.0.5 de l’appli.</td></tr>';
-  // Écran « ce qu'Apple va te demander » (1.0.6) : combien le voient et combien continuent vers Apple.
-  if (f.sheet_info) $('tbFails').innerHTML += `<tr><td>Écran « ce qu’Apple va te demander » vu</td><td class="n">${int(f.sheet_info)}</td><td class="n"></td><td class="sub">Depuis la 1.0.6, juste avant la fenêtre Apple.</td></tr><tr><td>→ ont continué vers Apple</td><td class="n">${int(f.sheet_go || 0)}</td><td class="n">${pct(f.sheet_go || 0, f.sheet_info)}</td><td class="sub">Les autres ont fait « Retour ».</td></tr>`;
-  // Question par question
-  const steps = f.steps.filter((x) => x.idx < 999);
-  if (!st || !steps.length) { $('fnSteps').innerHTML = '<div class="sub" style="grid-column:1/-1">Pas encore de données sur cette période. Elles arrivent avec la version 1.0.2 de l’appli.</div>'; return; }
-  let worst = -1, worstDrop = 0;
-  steps.forEach((x, i) => { if (i === 0) return; const drop = (steps[i - 1].people - x.people) / Math.max(1, steps[i - 1].people); if (drop > worstDrop) { worstDrop = drop; worst = i; } });
-  $('fnSteps').innerHTML = '<div class="head">Écran</div><div class="head">Encore là</div><div class="head" style="text-align:right">%</div><div class="head" style="text-align:right">Perte</div>' +
-    steps.map((x, i) => {
-      const share = x.people / st, drop = i ? (steps[i - 1].people - x.people) / Math.max(1, steps[i - 1].people) : 0;
-      const cls = i === worst && worstDrop > 0 ? ' class="worst"' : '';
-      const label = STEP_LABELS[x.step] || x.step;
-      return `<div${cls} style="display:contents"><div class="lab" title="${esc(label)} · ${int(x.people)} personnes">${i + 1}. ${esc(label)}</div><div class="bar"><i style="width:${Math.max(0.5, share * 100)}%"></i></div><div class="pct">${pct(x.people, st)}</div><div class="drop">${i ? '−' + (drop * 100).toFixed(0) + ' %' : ''}</div></div>`;
-    }).join('');
+// ---------- Période (la même pour tout le tableau de bord) ----------
+function range() {
+  const t = D.today;
+  if (period === 'today') return [t, t];
+  if (period === '7') return [shiftDay(t, -6), t];
+  if (period === '30') return [shiftDay(t, -29), t];
+  if (period === 'month') return [t.slice(0, 8) + '01', t];
+  return ['0000-00-00', t];
+}
+const PERIOD_TEXT = { today: 'aujourd’hui', 7: 'sur 7 jours', 30: 'sur 30 jours', month: 'ce mois-ci', all: 'depuis le début' };
+
+/** Additionne les faits de la période. f = [jour, quoi, source, code, nombre, euros]. */
+function total(kind, test = () => true, [from, to] = range()) {
+  let n = 0, eurs = 0;
+  for (const f of D.facts) if (f[1] === kind && f[0] >= from && f[0] <= to && test(f)) { n += f[4]; eurs += f[5]; }
+  return { n, eur: eurs };
 }
 
-// ---------- Sources : d'où viennent les clients et ce qu'ils rapportent ----------
-const SRC = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', snapchat: 'Snapchat', chatgpt: 'ChatGPT / IA', appstore: 'App Store (recherche, Apple Ads)', friend: 'Bouche-à-oreille', other: 'Autre', unknown: 'Non déclaré' };
-const KIND = { ad: 'Pub', creator: 'Créateurs', zt: 'Compte Zéro Taffe (gratuit)', unsure: 'Ne sait plus' };
-const SOCIAL_SRC = ['tiktok', 'instagram', 'youtube', 'snapchat'];
-const EXPENSE_SOURCES = [
-  ['', 'Pas une dépense pour attirer des clients'],
-  ['tiktok:creator', 'Créateur TikTok'], ['instagram:creator', 'Créateur Instagram'], ['youtube:creator', 'Créateur YouTube'], ['snapchat:creator', 'Créateur Snapchat'],
-  ['tiktok:ad', 'Pub TikTok (si pas lue automatiquement)'], ['instagram:ad', 'Pub Instagram / Meta'], ['snapchat:ad', 'Pub Snapchat'],
-  ['chatgpt:ad', 'Pub ChatGPT'], ['appstore:ad', 'Apple Ads'],
-];
-const srcLabel = (key) => { const [p, k] = String(key || '').split(':'); return (SRC[p] || p) + (k ? ' · ' + (KIND[k] || k) : ''); };
-let srcPeriod = cfg.get('srcPeriod', 'all');
+// ---------- Résumé ----------
+function renderResume() {
+  const subs = D.subscribers;
+  const monthly = subs.reduce((t, s) => t + (s.monthly_net || 0), 0);
+  const paying = subs.filter((s) => s.status === 'active').length;
+  const trials = subs.filter((s) => s.status === 'trial');
+  const nextTrial = trials.map((s) => s.ends_at).filter(Boolean).sort()[0];
+  $('goal').innerHTML = `<div class="row" style="justify-content:space-between;align-items:baseline"><div><span class="k-val">${eur(monthly)}</span> <span class="sub">par mois en ce moment</span></div><div class="sub">objectif ${eur(GOAL)}</div></div>
+    <div class="goal-track" role="img" aria-label="${pct(monthly, GOAL)} de l’objectif"><i style="width:${Math.min(100, (100 * monthly) / GOAL)}%"></i></div>
+    <div class="sub">${int(paying)} abonné${paying > 1 ? 's' : ''} payant${paying > 1 ? 's' : ''} · ${int(trials.length)} essai${trials.length > 1 ? 's' : ''} en cours${nextTrial ? ` (prochain paiement possible le ${dayLabel(nextTrial.slice(0, 10), { day: 'numeric', month: 'long' })})` : ''}</div>`;
 
-function periodMonths(p) {
-  const cur = new Date().toISOString().slice(0, 7);
-  if (p === 'cur') return new Set([cur]);
-  if (p === 'prev') return new Set(lastMonths(2).slice(0, 1));
-  if (p === '3m') return new Set(lastMonths(3));
-  return null; // depuis le début
-}
+  const p = PERIOD_TEXT[period];
+  const net = total('money').eur;
+  const ad = total('spend', (f) => spendKind(f[2]) === 'ad').eur, cr = total('spend', (f) => spendKind(f[2]) === 'creator').eur, other = total('spend', (f) => spendKind(f[2]) === 'other').eur;
+  const spent = ad + cr + other, profit = net - spent;
+  $('moneyTitle').textContent = 'Argent ' + p;
+  $('money').innerHTML =
+    tile('Rapporté', eur(net), 'Ce qui te revient, après Apple et la TVA.', net > 0 ? 'pos' : '') +
+    tile('Dépensé', eur(spent), `Pubs ${eur(ad)} · créateurs ${eur(cr)} · autres ${eur(other)}`) +
+    tile('Bénéfice', eur(profit), 'Rapporté − dépensé.', profit >= 0 ? 'pos' : 'neg', 'wide');
 
-/** Conseil pour une source : continuer, améliorer, couper… (r = ligne agrégée). */
-function verdict(r) {
-  if (r.key === 'unknown') return ['', '—'];
-  if (!r.spend) return r.payers ? ['good', 'Gratuit : à développer'] : ['', r.people ? 'Gratuit' : '—'];
-  const roas = r.net / r.spend;
-  if (roas >= 1) return ['good', 'Rentable : augmenter'];
-  if (r.people < 15 && r.spend < 50) return ['', 'Trop tôt pour juger'];
-  if (roas >= 0.5) return ['warn', 'À améliorer : changer les vidéos'];
-  if (r.spend >= 50) return ['bad', 'À couper ou revoir'];
-  return ['', 'Trop tôt pour juger'];
-}
+  // Parcours : chaque personne comptée une fois, le jour où elle atteint l'étape.
+  const stages = [
+    ['user', 'Ouvert l’appli'], ['quiz', 'Quiz commencé'], ['paywall', 'Paywall vu'],
+    ['tap', 'Appui « Essayer »'], ['start', 'Essai gratuit pris'], ['paid', 'A payé'],
+  ].map(([k, l]) => ({ k, l, n: total(k).n }));
+  const top = Math.max(1, stages[0].n);
+  let worst = -1, worstRate = 2;
+  stages.forEach((s, i) => { if (i && stages[i - 1].n >= 5) { const r = s.n / stages[i - 1].n; if (r < worstRate) { worstRate = r; worst = i; } } });
+  $('pathTitle').textContent = 'Parcours ' + p;
+  $('path').innerHTML = '<div class="head">Étape</div><div class="head"></div><div class="head" style="text-align:right">Pers.</div><div class="head" style="text-align:right">Passage</div>' +
+    stages.map((s, i) => `<div${i === worst ? ' class="worst"' : ''} style="display:contents"><div class="lab" title="${esc(s.l)}">${esc(s.l)}</div><div class="track"><i style="width:${Math.max(0.5, (100 * s.n) / top)}%"></i></div><div class="num">${int(s.n)}</div><div class="rate">${i ? pct(s.n, stages[i - 1].n) : ''}</div></div>`).join('');
+  const acq = ad + cr, starts = stages[4].n, paid = stages[5].n;
+  $('pathNote').innerHTML = (worst > 0 ? `En orange : la plus grosse perte (${esc(stages[worst - 1].l.toLowerCase())} → ${esc(stages[worst].l.toLowerCase())}). ` : '') +
+    (acq ? `Pubs et créateurs : <b>${starts ? eur(acq / starts) : '—'}</b> par essai, <b>${paid ? eur(acq / paid) : '—'}</b> par payant.` : '');
 
-function renderSources(d) {
-  document.querySelectorAll('#srcPeriod button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === srcPeriod)));
-  const s = d.sources;
-  if (!s) { $('srcStatus').innerHTML = '<div class="note">Les sources ne sont pas encore disponibles.</div>'; ['srcTiles', 'tbSources', 'chSources'].forEach((id) => ($(id).innerHTML = '')); return; }
-  const months = periodMonths(srcPeriod);
-  const inP = (m) => !months || months.has(m);
-
-  // Agrégation par plateforme (TikTok…) et par précision (pub, créateur…).
-  const rows = {};
-  const row = (key) => (rows[key] ??= { key, people: 0, paywall: 0, trials: 0, payers: 0, net: 0, gross: 0, spend: 0 });
-  const add = (key, f) => { const [p, k] = key.split(':'); f(row(p)); if (k) f(row(p + ':' + k)); };
-  for (const c of s.cohorts.filter((c) => inP(c.month))) add(c.key, (r) => { r.people += c.people; r.paywall += c.paywall; r.trials += c.trials; r.payers += c.payers; r.net += c.net; r.gross += c.gross; });
-  for (const x of s.spend.filter((x) => inP(x.month))) add(x.key, (r) => { r.spend += x.amount; });
-
-  const platforms = Object.keys(SRC).filter((p) => rows[p]);
-  const tot = platforms.reduce((t, p) => { for (const f of ['people', 'paywall', 'trials', 'payers', 'net', 'gross', 'spend']) t[f] += rows[p][f]; return t; }, { people: 0, paywall: 0, trials: 0, payers: 0, net: 0, gross: 0, spend: 0 });
-
-  // État des branchements
-  const notes = [];
-  if (!s.cohorts.some((c) => c.key !== 'unknown')) notes.push('La question « comment tu as connu Zéro Taffe ? » arrive avec la <b>version 1.0.3</b> de l’appli : les sources se rempliront dès sa sortie.');
-  if (!s.webhook || !s.webhook.events) notes.push('Aucun paiement reçu de RevenueCat pour l’instant : le <b>webhook RevenueCat</b> doit être branché (voir avec Claude), sinon la colonne « Rapporté » reste à 0.');
-  $('srcStatus').innerHTML = notes.length ? `<div class="note" style="margin-bottom:12px">${notes.join('<br>')}</div>` : '';
-
-  const cpp = tot.payers ? tot.spend / tot.payers : null;
-  $('srcTiles').innerHTML =
-    tile('Retour sur tes dépenses', tot.spend ? (tot.net / tot.spend).toFixed(2).replace('.', ',') + ' ×' : '—', tot.spend ? `${eur(tot.net)} rapportés pour ${eur(tot.spend)} dépensés.` : 'Aucune dépense d’acquisition sur la période.', tot.spend ? (tot.net >= tot.spend ? 'pos' : 'neg') : '', 'hero') +
-    tile('Dépensé', eur(tot.spend), 'Pubs et créateurs, sur la période.') +
-    tile('Rapporté', eur(tot.net), 'Ce qui te revient, payé par ces personnes.') +
-    tile('Coût par client payant', cpp == null ? '—' : eur(cpp, 2), 'Repère : sous 28 € tu gagnes de l’argent dès la 1re année.', cpp == null ? '' : cpp <= 28 ? 'pos' : 'neg');
-
-  const line = (r, label, cls = '') => {
-    const [vc, vt] = verdict(r);
-    const pending = Math.max(0, r.trials - r.payers);
-    return `<tr class="${cls}"><td>${esc(label)}</td><td class="n">${r.spend ? eur(r.spend) : '—'}</td><td class="n">${int(r.people)}</td><td class="n">${pct(r.paywall, r.people)}</td><td class="n">${int(r.trials)}${pending ? ` <span class="sub">(${int(pending)} en cours)</span>` : ''}</td><td class="n">${int(r.payers)}</td><td class="n">${eur(r.net)}</td><td class="n">${r.spend && r.payers ? eur(r.spend / r.payers, 2) : '—'}</td><td class="n ${r.spend ? (r.net >= r.spend ? 'pos' : 'neg') : ''}">${r.spend ? (r.net / r.spend).toFixed(2).replace('.', ',') + ' ×' : '—'}</td><td>${cls === 'total' ? '' : `<span class="pill ${vc}">${esc(vt)}</span>`}</td></tr>`;
-  };
-  $('tbSources').innerHTML = platforms.length
-    ? '<tr><th>Source</th><th class="n">Dépensé</th><th class="n">Personnes</th><th class="n">Vont au paywall</th><th class="n">Essais ou achats</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Coût / payant</th><th class="n">Retour</th><th>Conseil</th></tr>' +
-      platforms.map((p) => line(rows[p], SRC[p]) + (SOCIAL_SRC.includes(p) ? Object.keys(KIND).filter((k) => rows[p + ':' + k]).map((k) => line(rows[p + ':' + k], '↳ ' + KIND[k], 'sub')).join('') : '')).join('') +
-      line(tot, 'Total', 'total')
-    : '<tr><td class="sub">Pas encore de données sur cette période.</td></tr>';
-
-  const chartP = platforms.filter((p) => rows[p].spend || rows[p].net);
-  if (chartP.length) barChart($('chSources'), chartP.map((p) => SRC[p].split(' (')[0]), [
-    { name: 'Dépensé', values: chartP.map((p) => rows[p].spend), color: 'var(--s2)' },
-    { name: 'Rapporté', values: chartP.map((p) => rows[p].net), color: 'var(--s1)' },
-  ], (v, full) => eur(v, full ? 2 : 0));
-  else $('chSources').innerHTML = '<p class="sub">Le graphique apparaîtra dès la première dépense ou le premier paiement.</p>';
-}
-
-// ---------- Créateurs : codes promo, ce qu'ils rapportent, ce que tu leur dois ----------
-const STATUS_LABEL = { 'contacté': 'Contacté', accord: 'Accord', 'posté': 'A posté', 'terminé': 'Terminé' };
-const tierBonus = (tiers, payers) => (tiers || []).filter(([n]) => payers >= n).reduce((m, [, b]) => Math.max(m, b), 0);
-const codeIn = (label, code) => new RegExp('(^|[^A-Z0-9])' + code + '($|[^A-Z0-9])').test(String(label).toUpperCase());
-
-function creatorRows(d) {
-  const stats = Object.fromEntries(((d.sources && d.sources.offer_codes) || []).map((o) => [o.code, o]));
-  const list = [...(d.creators || [])];
-  // Codes utilisés mais pas encore déclarés comme créateur : on les montre quand même.
-  for (const code of Object.keys(stats)) if (!list.some((c) => c.code === code)) list.push({ code, handle: null, fixed_eur: 0, per_payer_eur: 0, tiers: [], status: 'accord', unknown: true });
-  return list.map((c) => {
-    const o = stats[c.code] || { uses: 0, payers: 0, gross: 0, net: 0, payers_by_month: {}, uses_by_month: {}, net_by_month: {}, gross_by_month: {} };
-    const fixed = c.status === 'contacté' ? 0 : Number(c.fixed_eur) || 0;
-    const commission = (Number(c.per_payer_eur) || 0) * o.payers;
-    const bonus = tierBonus(c.tiers, o.payers);
-    const due = fixed + commission + bonus;
-    const paid = (d.expenses || []).filter((x) => codeIn(x.label, c.code)).reduce((t, x) => t + Number(x.amount_eur), 0);
-    const next = (c.tiers || []).find(([n]) => o.payers < n);
-    return { ...c, o, fixed, commission, bonus, due, paid, left: due - paid, profit: o.net - due, next };
-  });
-}
-
-function renderCreators(d) {
-  if (!d.creators) {
-    $('crStatus').innerHTML = '<div class="note">La liste des créateurs n’est pas encore disponible (table admin_creators à créer).</div>';
-    ['crTiles', 'tbCreators', 'tbCrMonths'].forEach((id) => ($(id).innerHTML = ''));
-    return;
+  // Jour par jour
+  const [from, to] = range();
+  const first = D.facts.reduce((m, f) => (f[0] < m ? f[0] : m), to);
+  const rows = [];
+  for (let d = to; d >= (from > first ? from : first); d = shiftDay(d, -1)) {
+    const r = [d].concat(['spend', 'user', 'quiz', 'paywall', 'start', 'paid', 'money'].map((k) => (k === 'spend' || k === 'money' ? total(k, () => true, [d, d]).eur : total(k, () => true, [d, d]).n)));
+    rows.push(r);
+    if (rows.length >= 120) break;
   }
-  const rows = creatorRows(d);
-  const live = rows.filter((r) => r.status !== 'contacté');
-  const sum = (f) => live.reduce((t, r) => t + r[f], 0);
-  const payers = live.reduce((t, r) => t + r.o.payers, 0);
-  $('crStatus').innerHTML = payers ? '' : '<div class="note" style="margin-bottom:12px">Aucun abonné payant venu d’un code créateur pour l’instant. Les chiffres se remplissent tout seuls dès le premier paiement (après les 7 jours gratuits).</div>';
-  $('crTiles').innerHTML =
-    tile('Reste à payer aux créateurs', eur(sum('left'), 2), 'Dû − déjà payé, tous créateurs confondus.', sum('left') > 0 ? 'neg' : '', 'hero') +
-    tile('Créateurs en accord', int(live.filter((r) => !r.unknown).length), `${int(rows.length - live.length)} contacté${rows.length - live.length > 1 ? 's' : ''} sans accord.`) +
-    tile('Abonnés payants via créateurs', int(payers), `${int(live.reduce((t, r) => t + r.o.uses, 0))} codes utilisés en tout.`) +
-    tile('Rapporté par les créateurs', eur(sum('profit') + sum('due'), 2), 'Ce qui te revient, payé par ces abonnés.') +
-    tile('Bénéfice après créateurs', eur(sum('profit'), 2), 'Rapporté − tout ce que tu leur dois.', sum('profit') >= 0 ? 'pos' : 'neg');
+  const cols = ['Jour', 'Dépensé', 'Ouvert l’appli', 'Quiz', 'Paywall', 'Essais', 'Payants', 'Rapporté'];
+  const sum = (i) => rows.reduce((t, r) => t + r[i], 0);
+  $('days').innerHTML = `<tr>${cols.map((c, i) => `<th${i ? ' class="n"' : ''}>${c}</th>`).join('')}</tr>` +
+    rows.map((r) => `<tr><td>${dayLabel(r[0])}</td><td class="n">${r[1] ? eur(r[1]) : '—'}</td>${r.slice(2, 7).map((v) => `<td class="n">${v ? int(v) : '·'}</td>`).join('')}<td class="n">${r[7] ? eur(r[7]) : '—'}</td></tr>`).join('') +
+    (rows.length > 1 ? `<tr class="total"><td>Total</td><td class="n">${eur(sum(1))}</td>${[2, 3, 4, 5, 6].map((i) => `<td class="n">${int(sum(i))}</td>`).join('')}<td class="n">${eur(sum(7))}</td></tr>` : '');
 
-  const deal = (r) => [r.fixed_eur ? eur(r.fixed_eur) + ' fixe' : '', r.per_payer_eur ? eur(r.per_payer_eur, Number.isInteger(+r.per_payer_eur) ? 0 : 2) + ' / payant' : '', (r.tiers || []).length ? 'paliers ' + r.tiers.map(([n, b]) => `${n}→${eur(b)}`).join(', ') : ''].filter(Boolean).join(' + ') || (r.unknown ? 'Pas déclaré ici' : '—');
-  const day = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-  const ratio = (a, b) => (b ? (a / b).toFixed(2).replace('.', ',') + ' ×' : '—');
-  const COLS = 14;
-  $('tbCreators').innerHTML = rows.length
-    ? '<tr><th>Code</th><th>Créateur</th><th>Statut</th><th class="n">Codes utilisés</th><th class="n">Essais en cours</th><th class="n">Devenus payants</th><th class="n">Abonnés actifs</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th><th class="n">Dû</th><th class="n">Déjà payé</th><th class="n">Reste à payer</th><th class="n">Bénéfice</th><th class="n">Retour</th></tr>' +
-      rows.sort((a, b) => (a.status === 'contacté') - (b.status === 'contacté') || b.o.net - a.o.net || a.code.localeCompare(b.code)).map((r) => {
-        const o = r.o;
-        const hint = r.next ? `<div class="sub">${int(r.next[0] - o.payers)} de plus → bonus ${eur(r.next[1])}</div>` : '';
-        const detail = [r.fixed ? 'fixe ' + eur(r.fixed) : '', r.commission ? 'commission ' + eur(r.commission, 2) : '', r.bonus ? 'bonus ' + eur(r.bonus) : ''].filter(Boolean).join(' + ') || 'rien pour l’instant';
-        const months = [...new Set([...Object.keys(o.uses_by_month || {}), ...Object.keys(o.payers_by_month || {}), ...Object.keys(o.net_by_month || {})])].sort().reverse();
-        const monthTable = months.length
-          ? '<table style="margin-top:8px"><tr><th>Mois</th><th class="n">Codes utilisés</th><th class="n">Nouveaux payants</th><th class="n">Payé par les clients</th><th class="n">Rapporté</th>' + (r.per_payer_eur ? '<th class="n">Commission</th>' : '') + '</tr>' +
-            months.map((m) => `<tr><td>${monthLabel(m)}</td><td class="n">${int((o.uses_by_month || {})[m] || 0)}</td><td class="n">${int((o.payers_by_month || {})[m] || 0)}</td><td class="n">${eur((o.gross_by_month || {})[m] || 0, 2)}</td><td class="n">${eur((o.net_by_month || {})[m] || 0, 2)}</td>${r.per_payer_eur ? `<td class="n">${eur(((o.payers_by_month || {})[m] || 0) * r.per_payer_eur, 2)}</td>` : ''}</tr>`).join('') + '</table>'
-          : '<p class="sub">Pas encore d’historique mois par mois.</p>';
-        const facts = [
-          ['Accord', esc(deal(r))],
-          ['Compte', r.handle ? `<a href="https://www.tiktok.com/@${encodeURIComponent(r.handle)}" target="_blank" rel="noopener">@${esc(r.handle)}</a>` : '—'],
-          ['Taux code → payant', pct(o.payers, o.uses)],
-          ['N’ont pas payé après l’essai', int(o.not_converted || 0)],
-          ['Ont coupé le renouvellement', int(o.stopped || 0)],
-          ['Renouvellements payés', int(o.renewals || 0)],
-          ['Remboursements', o.refunds ? `${int(o.refunds)} (${eur(o.refund_eur, 2)})` : '0'],
-          ['Rapporté par payant', o.payers ? eur(o.net / o.payers, 2) : '—'],
-          ['Coût par payant', o.payers && r.due ? eur(r.due / o.payers, 2) : '—'],
-          ['Détail de ce qui est dû', esc(detail)],
-          ['1er code utilisé', day(o.first_use)],
-          ['Dernier code utilisé', day(o.last_use)],
-        ];
-        const detailRow = `<tr class="crDetail" data-for="${esc(r.code)}" hidden><td colspan="${COLS}" style="background:var(--bg2, transparent)"><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">${facts.map(([k, v]) => `<div><div class="k-label">${k}</div><div>${v}</div></div>`).join('')}</div>${monthTable}${r.unknown ? '' : `<div class="row" style="margin-top:8px"><button class="ghost" data-cr-edit="${esc(r.code)}">Modifier</button><button class="ghost" data-cr-del="${esc(r.code)}">Retirer</button></div>`}</td></tr>`;
-        return `<tr><td><button class="ghost" data-cr-open="${esc(r.code)}" aria-expanded="false" title="Voir le détail">▸ <b>${esc(r.code)}</b></button></td><td>${r.handle ? '@' + esc(r.handle) : '—'}</td><td>${esc(STATUS_LABEL[r.status] || r.status)}</td><td class="n">${int(o.uses)}</td><td class="n">${int(o.trialing || 0)}</td><td class="n">${int(o.payers)} <span class="sub">(${pct(o.payers, o.uses)})</span>${hint}</td><td class="n">${int(o.active || 0)}</td><td class="n">${eur(o.gross, 2)}</td><td class="n">${eur(o.net, 2)}</td><td class="n" title="${esc(detail)}">${eur(r.due, 2)}</td><td class="n">${r.paid ? eur(r.paid, 2) : '—'}</td><td class="n ${r.left > 0.005 ? 'neg' : ''}"><b>${eur(Math.max(0, r.left), 2)}</b>${r.left < -0.005 ? `<div class="sub">avance ${eur(-r.left, 2)}</div>` : ''}</td><td class="n ${o.net || r.due ? (r.profit >= 0 ? 'pos' : 'neg') : ''}">${o.net || r.due ? eur(r.profit, 2) : '—'}</td><td class="n ${r.due ? (o.net >= r.due ? 'pos' : 'neg') : ''}">${ratio(o.net, r.due)}</td></tr>` + detailRow;
-      }).join('')
-    : '<tr><td class="sub">Aucun créateur pour l’instant. Ajoute-le en bas de la page.</td></tr>';
-  document.querySelectorAll('[data-cr-open]').forEach((b) => (b.onclick = () => {
-    const row = document.querySelector(`.crDetail[data-for="${CSS.escape(b.dataset.crOpen)}"]`);
-    row.hidden = !row.hidden; b.setAttribute('aria-expanded', String(!row.hidden)); b.innerHTML = (row.hidden ? '▸ ' : '▾ ') + `<b>${esc(b.dataset.crOpen)}</b>`;
-  }));
+  // Le moment de payer
+  const tap = total('tap').n, sheet = total('sheet').n, go = total('sheet_go').n;
+  const fails = Object.keys(FAILS).map((k) => [k, total('fail:' + k).n]).filter(([, n]) => n);
+  const failTotal = fails.reduce((t, [, n]) => t + n, 0);
+  $('pay').innerHTML = `<table>
+    <tr><td>Ont appuyé sur « Essayer »</td><td class="n">${int(tap)}</td><td></td></tr>
+    ${sheet ? `<tr><td>Ont vu l’écran « ce qu’Apple va te demander » <span class="sub">(1.0.6)</span></td><td class="n">${int(sheet)}</td><td class="n sub"></td></tr><tr class="child"><td>ont continué vers Apple</td><td class="n">${int(go)}</td><td class="n">${pct(go, sheet)}</td></tr>` : ''}
+    ${fails.map(([k, n]) => `<tr class="child"><td>${esc(FAILS[k])}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td></tr>`).join('')}
+    <tr><td>Ont pris l’essai gratuit</td><td class="n">${int(starts)}</td><td class="n">${pct(starts, tap)}</td></tr></table>
+    <p class="sub">Les raisons d’échec sont mesurées depuis la 1.0.5. Une personne peut avoir plusieurs raisons.</p>`;
 
-  // Commission par mois (fixes et bonus de paliers à part : ils ne dépendent pas du mois).
-  const months = {};
-  for (const r of live) if (r.per_payer_eur) for (const [m, n] of Object.entries(r.o.payers_by_month || {})) (months[m] ??= []).push({ code: r.code, n, amount: n * r.per_payer_eur });
-  const keys = Object.keys(months).sort().reverse();
-  $('tbCrMonths').innerHTML = keys.length
-    ? '<tr><th>Mois du 1er paiement</th><th>Créateur</th><th class="n">Nouveaux payants</th><th class="n">Commission</th><th>À payer vers</th></tr>' +
-      keys.flatMap((m) => months[m].map((x) => { const pay = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7), 10)); return `<tr><td>${monthLabel(m)}</td><td>${esc(x.code)}</td><td class="n">${int(x.n)}</td><td class="n"><b>${eur(x.amount, 2)}</b></td><td>le ${pay.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</td></tr>`; })).join('')
-    : '<tr><td class="sub">Pas encore de commission : elle apparaît dès qu’un abonné venu d’un code créateur paie pour la première fois.</td></tr>';
-  document.querySelectorAll('[data-cr-edit]').forEach((b) => (b.onclick = () => {
-    const r = rows.find((x) => x.code === b.dataset.crEdit);
-    $('crCode').value = r.code; $('crHandle').value = r.handle || ''; $('crFixed').value = r.fixed_eur || ''; $('crPer').value = r.per_payer_eur || '';
-    $('crTiers').value = (r.tiers || []).map(([n, v]) => `${n}:${v}`).join(', '); $('crStatusSel').value = r.status; $('crCode').focus();
-  }));
-  document.querySelectorAll('[data-cr-del]').forEach((b) => (b.onclick = async () => {
-    if (!confirm(`Retirer ${b.dataset.crDel} de la liste ? (le code reste actif dans App Store Connect)`)) return;
-    await api('DELETE', null, '?creator=' + encodeURIComponent(b.dataset.crDel)); load();
-  }));
+  // Question par question
+  const order = D.step_order || {};
+  const steps = Object.keys(order).sort((a, b) => order[a] - order[b]).map((s) => ({ s, n: total('q:' + s).n })).filter((x) => x.n);
+  const q0 = Math.max(1, total('quiz').n);
+  let qWorst = -1, qRate = 2;
+  steps.forEach((x, i) => { if (i && steps[i - 1].n >= 5) { const r = x.n / steps[i - 1].n; if (r < qRate) { qRate = r; qWorst = i; } } });
+  $('steps').innerHTML = steps.length
+    ? '<div class="head">Écran</div><div class="head"></div><div class="head" style="text-align:right">Pers.</div><div class="head" style="text-align:right">Passage</div>' +
+      steps.map((x, i) => `<div${i === qWorst ? ' class="worst"' : ''} style="display:contents"><div class="lab">${i + 1}. ${esc(STEP_LABELS[x.s] || x.s)}</div><div class="track"><i style="width:${Math.max(0.5, Math.min(100, (100 * x.n) / q0))}%"></i></div><div class="num">${int(x.n)}</div><div class="rate">${i ? pct(x.n, steps[i - 1].n) : ''}</div></div>`).join('')
+    : '<p class="sub">Pas de données sur cette période.</p>';
 }
 
-// ---------- Abonnés : qui a pris un abonnement, et où il en est ----------
-const PLAN_LABEL = { zt_annual: 'Annuel', zt_monthly: 'Mensuel', zt_annual_rescue: 'Annuel -50 %', zt_lifetime: 'À vie' };
-const SUB_STATUS = {
-  trial: ['Essai en cours', 'warn'],
-  trial_cancelled: ['Essai annulé', 'bad'],
-  active: ['Abonné payant', 'good'],
-  cancelled: ['Résilié', 'warn'],
-  billing: ['Problème de paiement', 'bad'],
-  expired: ['Terminé', ''],
-  refunded: ['Remboursé', 'bad'],
-};
-function renderSubscribers(d) {
-  const list = d.subscribers;
-  if (!list) { $('subTiles').innerHTML = '<div class="note">La liste des abonnés n’est pas encore disponible.</div>'; $('tbSubs').innerHTML = ''; return; }
-  const n = (st) => list.filter((x) => x.status === st).length;
-  const paying = n('active'), trials = n('trial'), stopped = n('cancelled') + n('trial_cancelled'), ended = n('expired') + n('refunded');
+// ---------- Abonnés ----------
+function renderSubs() {
+  const list = D.subscribers;
+  const n = (...st) => list.filter((x) => st.includes(x.status)).length;
   $('subTiles').innerHTML =
-    tile('Abonnés payants', int(paying), 'Ont payé et leur abonnement continue.', paying ? 'pos' : '', 'hero') +
-    tile('Essais en cours', int(trials), 'Dans leurs jours gratuits : deviendront payants s’ils n’annulent pas.') +
-    tile('Ont annulé', int(stopped), 'Renouvellement coupé : l’accès reste jusqu’à la fin de la période.', stopped ? 'neg' : '') +
-    tile('Terminés ou remboursés', int(ended), 'Abonnement fini.');
-  const day = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—');
-  const next = (x) =>
-    x.status === 'trial' ? `1er paiement le ${day(x.ends_at)}` :
-    x.status === 'active' ? `Renouvellement le ${day(x.ends_at)}` :
-    x.status === 'cancelled' || x.status === 'trial_cancelled' ? `Accès jusqu’au ${day(x.ends_at)}` :
-    x.status === 'billing' ? 'Apple réessaie de prélever' : x.ends_at ? `Fini le ${day(x.ends_at)}` : '—';
-  $('tbSubs').innerHTML = list.length
-    ? '<tr><th>Abonné</th><th>Formule</th><th>Depuis</th><th>État</th><th>Prochaine étape</th><th class="n">Payé</th><th class="n">Te revient</th><th>Source</th><th>Code</th></tr>' +
+    tile('Payants', int(n('active')), 'Ont payé, l’abonnement continue.', n('active') ? 'pos' : '') +
+    tile('Essais en cours', int(n('trial')), 'Paieront s’ils n’annulent pas.') +
+    tile('Ont annulé', int(n('cancelled', 'trial_cancelled')), 'Accès jusqu’à la fin de la période.') +
+    tile('Terminés', int(n('expired', 'refunded', 'billing')), 'Fini, remboursé ou paiement bloqué.');
+  const d = (iso) => (iso ? dayLabel(iso.slice(0, 10), { day: 'numeric', month: 'short' }) : '—');
+  const next = (x) => x.status === 'trial' ? `1er paiement le ${d(x.ends_at)}` : x.status === 'active' ? `Renouvellement le ${d(x.ends_at)}` :
+    ['cancelled', 'trial_cancelled'].includes(x.status) ? `Accès jusqu’au ${d(x.ends_at)}` : x.status === 'billing' ? 'Apple réessaie' : x.ends_at ? `Fini le ${d(x.ends_at)}` : '—';
+  $('subList').innerHTML = list.length
+    ? '<tr><th>Abonné</th><th>Formule</th><th>Depuis</th><th>État</th><th>Ensuite</th><th class="n">Te revient</th><th>Source</th></tr>' +
       list.map((x) => {
-        const [lab, cls] = SUB_STATUS[x.status] || [x.status, ''];
-        const who = x.name || x.email
-          ? `${x.name ? `<b>${esc(x.name)}</b>` : ''}${x.name && x.email ? '<br>' : ''}${x.email ? `<span class="sub">${esc(x.email)}</span>` : ''}`
-          : `<span class="sub">Anonyme${x.id ? ' · #' + esc(x.id) : ''}</span>`;
-        return `<tr><td>${who}</td><td>${esc(PLAN_LABEL[x.plan] || x.plan)}</td><td>${day(x.started_at)}</td><td><span class="pill ${cls}">${esc(lab)}</span></td><td class="sub">${esc(next(x))}</td><td class="n">${eur(x.gross, 2)}</td><td class="n">${eur(x.net, 2)}</td><td class="sub">${x.source ? esc(srcLabel(x.source)) : '—'}</td><td>${x.code ? esc(x.code) : '—'}</td></tr>`;
+        const [lab, cls] = STATUS[x.status] || [x.status, ''];
+        const who = x.name || x.email ? `${x.name ? `<b>${esc(x.name)}</b>` : ''}${x.email ? `<div class="sub">${esc(x.email)}</div>` : ''}` : `<span class="sub">Anonyme${x.id ? ' #' + esc(x.id) : ''}</span>`;
+        return `<tr><td>${who}</td><td>${esc(PLAN[x.plan] || x.plan)}</td><td>${d(x.started_at)}</td><td><span class="pill ${cls}">${esc(lab)}</span></td><td class="sub">${esc(next(x))}</td><td class="n">${eur(x.net)}</td><td class="sub">${esc(srcLabel(x.source))}${x.code ? ` · code <b>${esc(x.code)}</b>` : ''}</td></tr>`;
       }).join('')
     : '<tr><td class="sub">Pas encore d’abonné.</td></tr>';
 }
 
-function showTab(name) {
-  const tabs = [...document.querySelectorAll('#tabs button')];
-  if (!tabs.some((b) => b.dataset.tab === name)) name = 'overview';
-  tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-  document.querySelectorAll('section.tab').forEach((t) => (t.hidden = t.id !== 'tab-' + name));
-  cfg.set('tab', name);
-  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
-}
-
-// ---------- Rendu ----------
-function render(d) {
-  $('updated').innerHTML = 'Mis à jour le ' + esc(new Date(d.generated_at).toLocaleString('fr-FR')) + '<span id="ago"></span> · actualisation automatique chaque minute';
-  const rc = d.revenuecat || {};
-  const m = rc.metrics || {};
-  const curMonth = new Date().toISOString().slice(0, 7);
-
-  // Mois : RevenueCat (6 mois) + coût IA + dépenses saisies
-  const monthsList = rc.months ? rc.months.map((x) => x.month) : lastMonths(6);
-  // TikTok Ads : dépenses lues automatiquement. Si c'est branché, les saisies « TikTok » ne sont plus comptées (pas de double).
-  const tt = d.tiktok || {};
-  const ttAuto = tt.configured && !tt.error;
-  const ttBy = ttAuto ? tt.spend_by_month || {} : {};
-  const isTikTokLabel = (l) => /tiktok/i.test(l);
-  const manualBy = {};
-  for (const e of d.expenses) {
-    if (ttAuto && isTikTokLabel(e.label)) continue;
-    const k = e.month.slice(0, 7); manualBy[k] = (manualBy[k] || 0) + Number(e.amount_eur);
+// ---------- Sources et créateurs ----------
+function renderSources() {
+  $('srcTitle').textContent = 'D’où viennent les gens ' + PERIOD_TEXT[period];
+  const rows = {};
+  const row = (k) => (rows[k] ??= { k, spend: 0, quiz: 0, start: 0, paid: 0, net: 0 });
+  const put = (key, field, v) => { const [p, k] = String(key || 'unknown').split(':'); row(p)[field] += v; if (k) row(p + ':' + k)[field] += v; };
+  const [from, to] = range();
+  for (const f of D.facts) {
+    if (f[0] < from || f[0] > to) continue;
+    if (f[1] === 'quiz') put(f[2], 'quiz', f[4]);
+    else if (f[1] === 'start') put(f[2], 'start', f[4]);
+    else if (f[1] === 'paid') put(f[2], 'paid', f[4]);
+    else if (f[1] === 'money') put(f[2], 'net', f[5]);
+    else if (f[1] === 'spend' && spendKind(f[2]) !== 'other') put(f[2], 'spend', f[5]);
   }
-  const rows = monthsList.map((k) => {
-    const r = (rc.months || []).find((x) => x.month === k) || { revenue: 0, proceeds: 0 };
-    const ai = d.coach.cost_by_month_eur[k] || 0, manual = (manualBy[k] || 0) + (ttBy[k] || 0);
-    return { k, revenue: r.revenue, proceeds: r.proceeds, ai, manual, spend: ai + manual, profit: r.proceeds - ai - manual };
+  const platforms = Object.keys(SRC).filter((p) => rows[p]).sort((a, b) => (a === 'unknown') - (b === 'unknown') || rows[b].quiz - rows[a].quiz);
+  const tot = platforms.reduce((t, p) => { for (const k of ['spend', 'quiz', 'start', 'paid', 'net']) t[k] += rows[p][k]; return t; }, { spend: 0, quiz: 0, start: 0, paid: 0, net: 0 });
+  const line = (r, label, cls = '') => {
+    const bal = r.net - r.spend;
+    return `<tr class="${cls}"><td>${esc(label)}</td><td class="n">${r.spend ? eur(r.spend) : '—'}</td><td class="n">${int(r.quiz)}</td><td class="n">${int(r.start)}</td><td class="n">${int(r.paid)}</td><td class="n">${r.net ? eur(r.net) : '—'}</td><td class="n ${r.spend || r.net ? (bal >= 0 ? 'pos' : 'neg') : ''}">${r.spend || r.net ? eur(bal) : '—'}</td></tr>`;
+  };
+  $('srcTable').innerHTML = platforms.length
+    ? '<tr><th>Source</th><th class="n">Dépensé</th><th class="n">Quiz</th><th class="n">Essais</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Bilan</th></tr>' +
+      platforms.map((p) => line(rows[p], SRC[p]) + Object.keys(KIND).filter((k) => rows[p + ':' + k]).map((k) => line(rows[p + ':' + k], KIND[k], 'child')).join('')).join('') +
+      line(tot, 'Total', 'total')
+    : '<tr><td class="sub">Pas de données sur cette période.</td></tr>';
+
+  // Créateurs : toujours depuis le début (ce qui est dû s'additionne dans le temps).
+  const all = ['0000-00-00', D.today];
+  const codes = new Set([...D.creators.map((c) => c.code), ...D.facts.filter((f) => f[3]).map((f) => f[3])]);
+  const list = [...codes].map((code) => {
+    const c = D.creators.find((x) => x.code === code) || { code, handle: null, fixed_eur: 0, per_payer_eur: 0, tiers: [], status: 'accord', unknown: true };
+    const uses = total('start', (f) => f[3] === code, all).n, payers = total('paid', (f) => f[3] === code, all).n, net = total('money', (f) => f[3] === code, all).eur;
+    const fixed = c.status === 'contacté' ? 0 : Number(c.fixed_eur) || 0;
+    const bonus = (c.tiers || []).filter(([n]) => payers >= n).reduce((m, [, b]) => Math.max(m, b), 0);
+    const due = fixed + (Number(c.per_payer_eur) || 0) * payers + bonus;
+    const re = new RegExp('(^|[^A-Z0-9])' + code + '($|[^A-Z0-9])');
+    const paid = D.expenses.filter((x) => re.test(String(x.label).toUpperCase())).reduce((t, x) => t + Number(x.amount_eur), 0);
+    return { ...c, uses, payers, net, due, paid };
   });
-  const cur = rows.find((r) => r.k === curMonth) || { revenue: 0, proceeds: 0, ai: 0, manual: 0, spend: 0, profit: 0 };
-
-  $('month').innerHTML =
-    tile('Bénéfice du mois', eur(cur.profit), 'Ce qui te revient − toutes les dépenses du mois.', cur.profit >= 0 ? 'pos' : 'neg', 'hero') +
-    tile('Chiffre d’affaires (brut)', eur(cur.revenue), 'Ce que les clients ont payé ce mois-ci.') +
-    tile('Ce qui te revient', eur(cur.proceeds), 'Après la part d’Apple (15 %) et les taxes.') +
-    tile('Dépenses du mois', eur(cur.spend), `IA ${eur(cur.ai, 2)} + saisies ${eur(cur.manual)}.`);
-
-  // Pubs et acquisition : dépenses saisies dont le libellé parle de pub (TikTok, Meta, ads…)
-  const isAd = (l) => /pub|tiktok|meta|facebook|instagram|ads?\b|influen/i.test(l);
-  const ttMonth = ttBy[curMonth] || 0;
-  const adSpend = ttMonth + d.expenses.filter((e) => e.month.slice(0, 7) === curMonth && isAd(e.label) && !(ttAuto && isTikTokLabel(e.label))).reduce((s, e) => s + Number(e.amount_eur), 0);
-  const ttDays = ttAuto ? Object.entries(tt.by_day || {}).filter(([k]) => k.slice(0, 7) === curMonth) : [];
-  const ttInstalls = ttDays.reduce((s, [, v]) => s + v.installs, 0), ttClicks = ttDays.reduce((s, [, v]) => s + v.clicks, 0), ttImpr = ttDays.reduce((s, [, v]) => s + v.impressions, 0);
-  const ttNote = !tt.configured ? 'TikTok pas encore relié : dépenses à saisir à la main.' : tt.error ? 'Erreur TikTok : ' + tt.error : 'Dont TikTok (automatique) : ' + eur(ttMonth, 2) + '.';
-  const newMonth = d.users.new_month ?? 0;
-  const subsNow = m.active_subscriptions ?? null, trialsNow = m.active_trials ?? null;
-  $('acq').innerHTML =
-    tile('Dépensé en pubs', eur(adSpend), ttNote, tt.error ? 'neg' : '') +
-    (ttAuto ? tile('TikTok : clics → installations', `${int(ttClicks)} → ${int(ttInstalls)}`, `${int(ttImpr)} affichages · taux de clic ${ttImpr ? (100 * ttClicks / ttImpr).toFixed(2) + ' %' : '—'} (repère : > 0,8 %).`, ttImpr && ttClicks / ttImpr < 0.008 ? 'neg' : '') : '') +
-    tile('Nouveaux utilisateurs', int(newMonth), 'Installations qui ont ouvert l’appli ce mois-ci.') +
-    tile('Coût par nouvel utilisateur', newMonth && adSpend ? eur(adSpend / newMonth, 2) : '—', 'Pubs ÷ nouveaux utilisateurs. Repère : sous 3 € c’est bien.', newMonth && adSpend / newMonth > 3 ? 'neg' : '') +
-    tile('Essais en cours', trialsNow == null ? '—' : int(trialsNow), rc.configured ? 'Dans leurs 3 jours gratuits.' : 'Relie RevenueCat pour voir ce chiffre.') +
-    tile('Coût par abonné', subsNow && adSpend ? eur(adSpend / subsNow, 2) : '—', 'Pubs du mois ÷ abonnés actifs (approximation).') +
-    tile('Retour sur pub', adSpend ? (cur.proceeds / adSpend).toFixed(2) + ' ×' : '—', 'Ce qui te revient ÷ pubs. Au-dessus de 1 × = rentable.', adSpend && cur.proceeds < adSpend ? 'neg' : adSpend ? 'pos' : '');
-
-  // CAC, LTV estimée et ratio
-  // Nouveaux abonnés du mois ≈ abonnés actifs aujourd'hui − abonnés actifs au 1er jour du mois enregistré
-  // (approximation : les résiliations du mois ne sont pas comptées, faibles au début avec l'annuel).
-  const snaps = d.snapshots;
-  let newSubs = null;
-  if (snaps && snaps.length && subsNow != null) {
-    const before = snaps.filter((s) => s.day < curMonth + '-01').pop();
-    const firstThisMonth = snaps.find((s) => s.day.slice(0, 7) === curMonth);
-    const base = before ? before.active_subscriptions : firstThisMonth ? firstThisMonth.active_subscriptions : 0;
-    newSubs = Math.max(0, subsNow - base);
-  }
-  const cac = adSpend && newSubs ? adSpend / newSubs : null;
-  const renew = Number(cfg.get('renew', 25)) / 100;
-  const firstPay = newSubs ? cur.proceeds / newSubs : null; // net moyen du 1er paiement (après Apple et taxes)
-  const ltv = firstPay != null ? firstPay * (1 + renew) : null;
-  const ratio = cac && ltv ? ltv / cac : null;
-  $('acq').innerHTML +=
-    tile('Nouveaux abonnés payants', newSubs == null ? '—' : int(newSubs), snaps === null ? 'Colle le script SQL « historique abonnés » dans Supabase pour activer ce calcul.' : 'Hausse des abonnés actifs depuis le début du mois (estimation).') +
-    tile('CAC (coût par abonné payant)', cac == null ? '—' : eur(cac, 2), 'Pubs du mois ÷ nouveaux abonnés payants.') +
-    tile('LTV estimée', ltv == null ? '—' : eur(ltv, 2), `1er paiement net moyen × (1 + ${Math.round(renew * 100)} % de renouvellement). Hypothèse à corriger en bas de page quand tu auras du recul.`) +
-    tile('Ratio LTV / CAC', ratio == null ? '—' : ratio.toFixed(1) + ' ×', 'Objectif : 3 × ou plus. Sous 1 ×, chaque abonné te fait perdre de l’argent.', ratio == null ? '' : ratio >= 3 ? 'pos' : ratio < 1 ? 'neg' : '', 'hero');
-
-  barChart($('chMoney'), rows.map((r) => monthLabel(r.k)), [
-    { name: 'Ce qui te revient', values: rows.map((r) => r.proceeds), color: 'var(--s1)' },
-    { name: 'Dépenses', values: rows.map((r) => r.spend), color: 'var(--s2)' },
-  ], (v, full) => eur(v, full ? 2 : 0));
-  $('tbMoney').innerHTML = '<tr><th>Mois</th><th class="n">CA brut</th><th class="n">Te revient</th><th class="n">IA</th><th class="n">Saisies</th><th class="n">Bénéfice</th></tr>' +
-    rows.map((r) => `<tr><td>${monthLabel(r.k)}</td><td class="n">${eur(r.revenue, 2)}</td><td class="n">${eur(r.proceeds, 2)}</td><td class="n">${eur(r.ai, 2)}</td><td class="n">${eur(r.manual, 2)}</td><td class="n ${r.profit >= 0 ? 'pos' : 'neg'}">${eur(r.profit, 2)}</td></tr>`).join('');
-
-  // Abonnés (RevenueCat)
-  const labelsRC = { active_subscriptions: ['Abonnés actifs', 'Personnes qui paient en ce moment.'], active_trials: ['Essais en cours', 'Dans leurs 3 jours gratuits : futurs abonnés potentiels.'], mrr: ['Revenu mensuel récurrent', 'Ce que rapportent les abonnements chaque mois (MRR).'], revenue: ['CA 28 derniers jours', 'Tout ce qui a été encaissé sur 28 jours.'], new_customers: ['Nouveaux clients (28 j)', 'Personnes vues pour la première fois par RevenueCat.'], active_users: ['Utilisateurs actifs (28 j)', 'Chiffre RevenueCat : compte aussi les vérificateurs d’Apple et tes tests. Le vrai chiffre est dans l’onglet « Utilisateurs et e-mails ».'] };
-  if (!rc.configured) $('subs').innerHTML = '<div class="note"><b>⚠️ RevenueCat n’est pas encore relié</b> : sans lui, pas de chiffre d’affaires, d’abonnés ni d’essais. Dans le Terminal, dans le dossier zero-taffe :<br><code>supabase secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_PROJECT_ID=…</code><br>(RevenueCat > Project settings > API keys : crée une clé secrète v2 en lecture seule ; l’ID du projet est dans l’adresse de la page.)</div>';
-  else if (rc.error) $('subs').innerHTML = `<div class="note">RevenueCat a renvoyé une erreur : ${esc(rc.error)}</div>`;
-  else {
-    const subs = m.active_subscriptions || 0;
-    $('subs').innerHTML = Object.entries(labelsRC).filter(([id]) => id in m).map(([id, [l, h]]) => tile(l, ['mrr', 'revenue'].includes(id) ? eur(m[id]) : int(m[id]), h)).join('') +
-      tile('Coût IA par abonné', subs ? eur(d.coach.cost_30d_eur / subs, 2) : '—', 'Coût du coach sur 30 jours ÷ abonnés actifs.');
-  }
-
-  // Utilisateurs
-  const u = d.users;
-  const excl = u.excluded ? ` ${int(u.excluded)} compte${u.excluded > 1 ? 's' : ''} de vérification Apple et de test retiré${u.excluded > 1 ? 's' : ''}.` : '';
-  $('users').innerHTML = tile('Utilisateurs au total', int(u.total), 'Appareils qui ont ouvert l’appli (compte anonyme créé tout seul, sans inscription).' + excl) +
-    tile('Nouveaux (7 jours)', int(u.new_7d), 'Installations récentes.') + tile('Nouveaux (30 jours)', int(u.new_30d), '') +
-    tile('Actifs (7 jours)', int(u.active_7d), 'Ont ouvert l’appli cette semaine, sans les vérificateurs d’Apple ni tes tests.') + tile('Défis à deux créés', int(d.duo.duos), '');
-  const days = lastDays(30);
-  lineChart($('chUsers'), days.map((x) => x.slice(8) + '/' + x.slice(5, 7)), days.map((x) => u.new_by_day[x] || 0), 'Nouveaux utilisateurs', (v) => int(Math.round(v)));
-
-  // Coach
-  const c = d.coach;
-  $('coach').innerHTML = tile('Coût IA (30 jours)', eur(c.cost_30d_eur, 2), `Estimation : ${c.prices.in} $ / ${c.prices.out} $ par million de tokens.`) +
-    tile('Messages (30 jours)', int(c.messages_30d), `${int(c.messages_24h)} ces dernières 24 h.`) +
-    tile('Coût par message', c.messages_30d ? eur(c.cost_30d_eur / c.messages_30d, 4) : '—', '') +
-    tile('Personnes qui parlent au coach', int(c.users_30d), 'Sur 30 jours.') +
-    tile('Erreurs IA (30 jours)', int(c.errors_30d), 'Réponses ratées côté OpenAI.', c.errors_30d ? 'neg' : '');
-  barChart($('chCoach'), days.map((x) => x.slice(8) + '/' + x.slice(5, 7)), [{ name: 'Messages', values: days.map((x) => c.by_day[x] || 0), color: 'var(--s1)' }], (v) => int(Math.round(v)));
-
-  // Spam
-  const s = d.spam, reasons = { slow: 'trop rapides', duplicate: 'doublons', burst: 'rafales', limit: 'limite du jour' };
-  $('spam').innerHTML = tile('Messages refusés (24 h)', int(s.rejected_24h), Object.entries(s.reasons_24h).map(([k, v]) => `${v} ${reasons[k] || k}`).join(', ') || 'Aucun.', s.rejected_24h ? 'neg' : '') +
-    tile('Personnes bloquées en ce moment', int(s.active_blocks.length), s.active_blocks.map((b) => `${b.user} : ${b.reason}`).join(' · ') || 'Personne.');
-  $('tbTop').innerHTML = s.top_users_24h.length ? '<tr><th>Utilisateur</th><th class="n">Messages</th><th class="n">Refusés</th></tr>' + s.top_users_24h.map((t) => `<tr><td>${esc(t.user)}</td><td class="n">${t.messages}</td><td class="n">${t.rejected}</td></tr>`).join('') : '<tr><td class="sub">Aucun message ces dernières 24 h.</td></tr>';
-
-  // Dépenses
-  $('tbEx').innerHTML = d.expenses.length ? '<tr><th>Mois</th><th>Dépense</th><th>Source</th><th class="n">Montant</th><th></th></tr>' + d.expenses.map((e) => `<tr><td>${monthLabel(e.month.slice(0, 7))}</td><td>${esc(e.label)}</td><td class="sub">${e.source ? esc(srcLabel(e.source)) : '—'}</td><td class="n">${eur(e.amount_eur, 2)}</td><td class="n"><button class="ghost" data-del="${e.id}">Supprimer</button></td></tr>`).join('') : '<tr><td class="sub">Aucune dépense saisie.</td></tr>';
-  document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => { await api('DELETE', null, '?id=' + b.dataset.del); load(); });
-
-  // Entonnoir et sources
-  lastData = d;
-  renderFunnel(d);
-  renderSources(d);
-  renderCreators(d);
-  renderSubscribers(d);
-
-  // E-mails
-  const em = d.emails;
-  $('emails').innerHTML = em == null
-    ? '<div class="note">Les e-mails ne sont pas encore disponibles : colle le script SQL « entonnoir et e-mails » dans Supabase.</div>'
-    : tile('Contacts e-mail', int(em.subscribed), `Personnes d’accord pour recevoir des e-mails. ${int(em.unsubscribed)} désinscrites.`, '', 'hero') +
-      tile('Nouveaux (7 jours)', int(em.new_7d), 'E-mails donnés cette semaine.') +
-      tile('Pas encore abonnés', int(em.without_purchase), 'Contacts à relancer par e-mail pour les faire revenir.', em.without_purchase ? 'pos' : '') +
-      tile('En anglais', int(em.english), 'Contacts dont le téléphone est en anglais.');
-
-  // Vue d'ensemble : l'essentiel sur 30 jours
-  const f30 = d.funnel ? d.funnel.d30 : null;
-  $('keyStats').innerHTML =
-    tile('Nouveaux utilisateurs', int(d.users.new_30d), 'Personnes qui ont ouvert l’appli (30 jours).') +
-    tile('Quiz → paywall', f30 ? pct(f30.paywall, f30.started) : '—', f30 ? `${int(f30.paywall)} sur ${int(f30.started)} qui ont commencé.` : 'Disponible avec la version 1.0.2.') +
-    tile('Paywall → abonnement', f30 ? pct(f30.purchases, f30.paywall) : '—', f30 ? `${int(f30.purchases)} essais ou achats.` : '') +
-    tile('Abonnés actifs', m.active_subscriptions == null ? '—' : int(m.active_subscriptions), (m.active_trials == null ? '' : int(m.active_trials) + ' en essai gratuit.')) +
-    tile('Contacts e-mail', em ? int(em.subscribed) : '—', em ? int(em.without_purchase) + ' à relancer.' : '') +
-    tile('Dépensé en pubs (mois)', eur(adSpend), ttNote);
-
-  $('notes').innerHTML = '<b>Comment lire ces chiffres</b><br>• « Ce qui te revient » = montant net envoyé par Apple, après sa commission et les taxes.<br>• Le coût de l’IA est une estimation calculée à partir des tokens réellement utilisés ; vérifie les prix sur la page tarifs d’OpenAI.<br>• Les achats faits en mode test (Test Store) n’apparaissent pas dans le chiffre d’affaires.<br>• L’entonnoir (quiz et paywall) est mesuré à partir de la version 1.0.2 de l’appli : avant, ces onglets restent vides.<br>• Les e-mails ne sont enregistrés que si la personne a coché la case de consentement.';
+  const deal = (r) => [r.fixed_eur ? eur(r.fixed_eur) + ' fixe' : '', r.per_payer_eur ? eur(r.per_payer_eur) + ' / payant' : '', (r.tiers || []).length ? 'paliers ' + r.tiers.map(([n, b]) => `${n}→${eur(b)}`).join(', ') : ''].filter(Boolean).join(' + ') || (r.unknown ? 'pas déclaré' : '—');
+  $('crTable').innerHTML = list.length
+    ? '<tr><th>Code</th><th>Accord</th><th class="n">Codes utilisés</th><th class="n">Payants</th><th class="n">Rapporté</th><th class="n">Dû</th><th class="n">Déjà payé</th><th class="n">Reste à payer</th></tr>' +
+      list.map((r) => { const left = r.due - r.paid; return `<tr><td><button class="link" data-cr="${esc(r.code)}"><b>${esc(r.code)}</b></button>${r.handle ? `<div class="sub">@${esc(r.handle)}</div>` : ''}<div class="sub">${esc(r.status)}</div></td><td class="sub">${esc(deal(r))}</td><td class="n">${int(r.uses)}</td><td class="n">${int(r.payers)}</td><td class="n">${eur(r.net)}</td><td class="n">${eur(r.due)}</td><td class="n">${r.paid ? eur(r.paid) : '—'}</td><td class="n ${left > 0.005 ? 'neg' : ''}"><b>${eur(Math.max(0, left))}</b></td></tr>`; }).join('')
+    : '<tr><td class="sub">Aucun créateur. Ajoute-le ci-dessous.</td></tr>';
+  document.querySelectorAll('[data-cr]').forEach((b) => (b.onclick = () => {
+    const r = list.find((x) => x.code === b.dataset.cr);
+    $('crCode').value = r.code; $('crHandle').value = r.handle || ''; $('crFixed').value = r.fixed_eur || ''; $('crPer').value = r.per_payer_eur || '';
+    $('crTiers').value = (r.tiers || []).map(([n, v]) => `${n}:${v}`).join(', '); $('crStatus').value = r.status;
+    $('crForm').open = true; $('crCode').focus();
+  }));
 }
 
-function lastMonths(n) { const now = new Date(); return Array.from({ length: n }, (_, k) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (n - 1 - k), 1)).toISOString().slice(0, 7)); }
+// ---------- Gestion ----------
+function renderAdmin() {
+  const st = D.status;
+  const ignored = new Set(st.ignored_manual_sources || []);
+  $('adNote').innerHTML = `Les pubs TikTok sont importées jour par jour${st.ad_spend_until ? ` (à jour jusqu’au ${dayLabel(st.ad_spend_until, { day: 'numeric', month: 'long' })})` : ''} : pas besoin de les saisir. ` +
+    (st.tiktok === 'ok' ? 'Import automatique actif.' : st.tiktok === 'off' ? 'Import fait par Claude à chaque bilan.' : `<span class="err">Erreur TikTok : ${esc(st.tiktok)}</span>`) +
+    ' Le coût du coach IA est compté tout seul.';
+  $('exTable').innerHTML = D.expenses.length
+    ? '<tr><th>Date</th><th>Dépense</th><th>Type</th><th class="n">Montant</th><th></th></tr>' +
+      D.expenses.map((e) => `<tr><td>${dayLabel(String(e.month).slice(0, 10), { day: 'numeric', month: 'short', year: '2-digit' })}</td><td>${esc(e.label)}${e.source && ignored.has(e.source) ? '<div class="sub">Pas comptée : remplacée par l’import TikTok</div>' : ''}</td><td class="sub">${esc((EXPENSE_TYPES.find(([v]) => v === (e.source || '')) || ['', e.source])[1])}</td><td class="n">${eur(e.amount_eur)}</td><td class="n"><button class="link" data-del="${e.id}">Supprimer</button></td></tr>`).join('')
+    : '<tr><td class="sub">Aucune dépense saisie.</td></tr>';
+  document.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => { if (confirm('Supprimer cette dépense ?')) { await api('DELETE', null, '?id=' + b.dataset.del); load(); } }));
+  $('misc').innerHTML =
+    tile('Contacts e-mail', int(D.emails.subscribed), `${int(D.emails.without_purchase)} pas encore abonnés (à relancer).`) +
+    tile('Coach IA (30 jours)', int(D.coach.messages_30d) + ' msg', `Coût estimé ${eur(D.coach.cost_30d_eur)}.`) +
+    tile('Comptes retirés des chiffres', int(st.excluded), 'Vérificateurs d’Apple et tes tests.');
+  $('how').innerHTML = '<b>Comment sont calculés les chiffres</b><br>• Tout le tableau de bord part des mêmes données : la période choisie en haut s’applique au Résumé et aux Sources, donc leurs totaux sont identiques.<br>• Chaque personne est comptée une fois par étape, le jour où elle l’atteint (heure de Paris).<br>• « Rapporté » = ce qu’Apple te verse (après sa part et la TVA), reçu automatiquement de RevenueCat. Les achats de test ne comptent pas.<br>• L’objectif compte ce que les abonnés payants rapportent par mois (un annuel compte pour 1/12).' +
+    (st.errors && st.errors.length ? `<br><span class="err">Données manquantes : ${esc(st.errors.join(', '))}.</span>` : '');
+}
 
+// ---------- Chargement ----------
+async function api(method = 'GET', body, query = '') {
+  const res = await fetch(URL_STATS + query, { method, headers: { 'x-admin-key': KEY, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  if (res.status === 401) throw new Error('unauthorized');
+  if (!res.ok) throw new Error('Erreur ' + res.status);
+  return res.json();
+}
+function render() {
+  if (!D) return;
+  document.querySelectorAll('#period button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === period)));
+  $('updated').innerHTML = 'Mis à jour à ' + new Date(D.generated_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ' · se met à jour tout seul';
+  renderResume(); renderSubs(); renderSources(); renderAdmin();
+}
+let lastLoad = 0;
+const DEMO_MODE = location.search.includes('demo') && !!window.DEMO;
 async function load() {
+  if (DEMO_MODE) return;
+  lastLoad = Date.now();
   try {
-    lastLoad = Date.now();
-    const d = await api();
+    D = await api();
     $('login').hidden = true; $('app').hidden = false;
-    render(d);
+    render();
   } catch (e) {
+    if (D && e.message !== 'unauthorized') { $('updated').textContent = 'Pas de connexion, chiffres de ' + new Date(D.generated_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); return; }
     $('app').hidden = true; $('login').hidden = false;
     $('loginErr').textContent = e.message === 'unauthorized' ? (KEY ? 'Clé incorrecte.' : '') : 'Impossible de charger : ' + e.message;
   }
 }
-
+function showTab(name) {
+  const tabs = [...document.querySelectorAll('#tabs button')];
+  if (!tabs.some((b) => b.dataset.tab === name)) name = 'resume';
+  tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  document.querySelectorAll('section.tab').forEach((t) => (t.hidden = t.id !== 'tab-' + name));
+  $('period').hidden = !['resume', 'sources'].includes(name); // Abonnés et Gestion ne dépendent pas de la période
+  ls.set('zt-tab', name);
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+}
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
-showTab(location.hash.slice(1) || cfg.get('tab', 'overview'));
+document.querySelectorAll('#period button').forEach((b) => (b.onclick = () => { period = b.dataset.p; ls.set('zt-period', period); render(); }));
+showTab(location.hash.slice(1) || ls.get('zt-tab', 'resume'));
 window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
-document.querySelectorAll('#fnPeriod button').forEach((b) => (b.onclick = () => { fnPeriod = b.dataset.d; cfg.set('fnPeriod', fnPeriod); if (lastData) renderFunnel(lastData); }));
-document.querySelectorAll('#srcPeriod button').forEach((b) => (b.onclick = () => { srcPeriod = b.dataset.p; cfg.set('srcPeriod', srcPeriod); if (lastData) renderSources(lastData); }));
-$('exSource').innerHTML = EXPENSE_SOURCES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
-$('keyBtn').onclick = () => { KEY = $('keyInput').value.trim(); store.set(KEY); load(); };
+$('keyBtn').onclick = () => { KEY = $('keyInput').value.trim(); ls.set('zt-admin-key', KEY); load(); };
 $('keyInput').onkeydown = (e) => { if (e.key === 'Enter') $('keyBtn').click(); };
-$('logout').onclick = () => { store.del(); KEY = ''; $('keyInput').value = ''; load(); };
 $('refresh').onclick = load;
-$('renew').value = cfg.get('renew', 25);
-$('renewSave').onclick = () => { const v = Math.min(100, Math.max(0, Number($('renew').value) || 0)); cfg.set('renew', v); $('renew').value = v; load(); };
-// Actualisation automatique : chaque minute, et dès que tu reviens sur l'onglet.
-let lastLoad = 0;
-const autoLoad = () => { if (KEY && document.visibilityState === 'visible') { lastLoad = Date.now(); load(); } };
-setInterval(autoLoad, 60_000);
-document.addEventListener('visibilitychange', () => { if (Date.now() - lastLoad > 15_000) autoLoad(); });
-setInterval(() => {
-  const s = Math.round((Date.now() - lastLoad) / 1000);
-  if (lastLoad && $('ago')) $('ago').textContent = s < 5 ? ' · à l’instant' : ` · il y a ${s < 60 ? s + ' s' : Math.round(s / 60) + ' min'}`;
-}, 5_000);
-$('exMonth').value = new Date().toISOString().slice(0, 7);
+setInterval(() => { if (KEY && document.visibilityState === 'visible') load(); }, 60_000);
+document.addEventListener('visibilitychange', () => { if (KEY && document.visibilityState === 'visible' && Date.now() - lastLoad > 15_000) load(); });
+
+$('exSource').innerHTML = EXPENSE_TYPES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+$('exDate').value = new Date().toISOString().slice(0, 10);
 $('exAdd').onclick = async () => {
   $('exErr').textContent = '';
   try {
-    await api('POST', { month: $('exMonth').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value), source: $('exSource').value || null });
-    $('exLabel').value = ''; $('exAmount').value = ''; $('exSource').value = ''; load();
-  } catch (e) { $('exErr').textContent = 'Vérifie le mois, le libellé et le montant.'; }
+    await api('POST', { date: $('exDate').value, label: $('exLabel').value, amount_eur: Number($('exAmount').value), source: $('exSource').value || null });
+    $('exLabel').value = ''; $('exAmount').value = ''; load();
+  } catch { $('exErr').textContent = 'Vérifie la date, le libellé et le montant.'; }
 };
-$('crAdd').onclick = async () => {
+$('crSave').onclick = async () => {
   $('crErr').textContent = '';
   const tiers = $('crTiers').value.split(/[,;]/).map((t) => t.split(':').map((x) => Number(x.trim()))).filter((t) => t.length === 2 && t.every((x) => x >= 0 && !isNaN(x)));
   try {
-    await api('POST', { creator: { code: $('crCode').value.trim().toUpperCase(), handle: $('crHandle').value, fixed_eur: Number($('crFixed').value) || 0, per_payer_eur: Number($('crPer').value) || 0, tiers, status: $('crStatusSel').value } });
+    await api('POST', { creator: { code: $('crCode').value.trim().toUpperCase(), handle: $('crHandle').value, fixed_eur: Number($('crFixed').value) || 0, per_payer_eur: Number($('crPer').value) || 0, tiers, status: $('crStatus').value } });
     ['crCode', 'crHandle', 'crFixed', 'crPer', 'crTiers'].forEach((id) => ($(id).value = '')); load();
-  } catch (e) { $('crErr').textContent = 'Vérifie le code : 2 à 20 lettres ou chiffres, sans espace.'; }
+  } catch { $('crErr').textContent = 'Vérifie le code : 2 à 20 lettres ou chiffres, sans espace.'; }
 };
-load();
+// Aperçu local avec des données d'exemple : ?demo (ne contacte pas le serveur).
+if (DEMO_MODE) { D = window.DEMO; $('login').hidden = true; $('app').hidden = false; render(); }
+else load();
 </script>
 </body>
 </html>
