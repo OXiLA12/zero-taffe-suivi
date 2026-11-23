@@ -241,6 +241,8 @@ const STATUS = {
   trial: ['Essai en cours', 'warn'], trial_cancelled: ['Essai annulé', 'bad'], active: ['Payant', 'good'], cancelled: ['A résilié', 'warn'],
   billing: ['Problème de paiement', 'bad'], expired: ['Terminé', ''], refunded: ['Remboursé', 'bad'],
 };
+// Réponse à « qu'est-ce qui t'a fait hésiter ? », posée après une fenêtre Apple fermée (1.0.7).
+const WHYS = { nocard: 'Pas de carte bancaire', price: 'Trop cher', forget: 'Peur d’oublier d’annuler', look: 'Voulait juste voir' };
 const FAILS = {
   cancelled: 'A fermé la fenêtre Apple', pending: 'Attend l’accord d’un parent', payment: 'Moyen de paiement refusé', not_allowed: 'Achats bloqués sur l’iPhone',
   network: 'Problème de connexion', store: 'Problème chez Apple', unavailable: 'Produit indisponible', ineligible: 'Essai déjà utilisé', other: 'Autre erreur',
@@ -330,12 +332,15 @@ function renderResume() {
   const tap = total('tap').n, sheet = total('sheet').n, go = total('sheet_go').n;
   const fails = Object.keys(FAILS).map((k) => [k, total('fail:' + k).n]).filter(([, n]) => n);
   const failTotal = fails.reduce((t, [, n]) => t + n, 0);
+  const whys = Object.keys(WHYS).map((k) => [k, total('why:' + k).n]).filter(([, n]) => n);
+  const whyTotal = whys.reduce((t, [, n]) => t + n, 0);
   $('pay').innerHTML = `<table>
     <tr><td>Ont appuyé sur « Essayer »</td><td class="n">${int(tap)}</td><td></td></tr>
     ${sheet ? `<tr><td>Ont vu l’écran « ce qu’Apple va te demander » <span class="sub">(1.0.6)</span></td><td class="n">${int(sheet)}</td><td class="n sub"></td></tr><tr class="child"><td>ont continué vers Apple</td><td class="n">${int(go)}</td><td class="n">${pct(go, sheet)}</td></tr>` : ''}
     ${fails.map(([k, n]) => `<tr class="child"><td>${esc(FAILS[k])}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td></tr>`).join('')}
+    ${whys.length ? `<tr><td>Ont dit ce qui les a fait hésiter <span class="sub">(1.0.7)</span></td><td class="n">${int(whyTotal)}</td><td></td></tr>` + whys.map(([k, n]) => `<tr class="child"><td>${esc(WHYS[k])}</td><td class="n">${int(n)}</td><td class="n">${pct(n, whyTotal)}</td></tr>`).join('') : ''}
     <tr><td>Ont pris l’essai gratuit</td><td class="n">${int(starts)}</td><td class="n">${pct(starts, tap)}</td></tr></table>
-    <p class="sub">Les raisons d’échec sont mesurées depuis la 1.0.5. Une personne peut avoir plusieurs raisons.</p>`;
+    <p class="sub">Les raisons d’échec sont mesurées depuis la 1.0.5, les hésitations depuis la 1.0.7. Une personne peut avoir plusieurs raisons.</p>`;
 
   // Question par question
   const order = D.step_order || {};
