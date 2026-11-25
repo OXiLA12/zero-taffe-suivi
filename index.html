@@ -330,11 +330,14 @@ function renderResume() {
 
   // Le moment de payer
   const tap = total('tap').n, sheet = total('sheet').n, go = total('sheet_go').n;
+  // 1.0.8 : 3 jours gratuits sans carte après le quiz, puis les offres.
+  const free = total('free').n, freeEnd = total('free_end').n;
   const fails = Object.keys(FAILS).map((k) => [k, total('fail:' + k).n]).filter(([, n]) => n);
   const failTotal = fails.reduce((t, [, n]) => t + n, 0);
   const whys = Object.keys(WHYS).map((k) => [k, total('why:' + k).n]).filter(([, n]) => n);
   const whyTotal = whys.reduce((t, [, n]) => t + n, 0);
   $('pay').innerHTML = `<table>
+    ${free ? `<tr><td>Ont commencé les 3 jours gratuits <span class="sub">(1.0.8)</span></td><td class="n">${int(free)}</td><td></td></tr><tr class="child"><td>ont vu les offres à la fin des 3 jours</td><td class="n">${int(freeEnd)}</td><td class="n">${pct(freeEnd, free)}</td></tr>` : ''}
     <tr><td>Ont appuyé sur « Essayer »</td><td class="n">${int(tap)}</td><td></td></tr>
     ${sheet ? `<tr><td>Ont vu l’écran « ce qu’Apple va te demander » <span class="sub">(1.0.6)</span></td><td class="n">${int(sheet)}</td><td class="n sub"></td></tr><tr class="child"><td>ont continué vers Apple</td><td class="n">${int(go)}</td><td class="n">${pct(go, sheet)}</td></tr>` : ''}
     ${fails.map(([k, n]) => `<tr class="child"><td>${esc(FAILS[k])}</td><td class="n">${int(n)}</td><td class="n">${pct(n, failTotal)}</td></tr>`).join('')}
